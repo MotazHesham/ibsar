@@ -1,0 +1,53 @@
+<?php
+
+return [
+    'course_attendance' => [
+        'title' => 'تسجيل الحضور',
+        'description' => 'يرجى إدخال رقم الهوية لتسجيل الحضور',
+        'identity_number' => 'رقم الهوية',
+        'check_attendance' => 'تسجيل الحضور',
+        'user_not_found' => 'المستخدم غير موجود',
+        'not_registered' => 'المستخدم غير مسجل في الدورة',
+        'already_attended' => 'لا يمكن تسجيل الحضور مرة أخرى في نفس اليوم',
+        'success' => 'تم تسجيل الحضور بنجاح',
+    ],
+    'course_certificate' => [
+        'title' => 'طلب شهادة',
+        'description' => 'يرجى إدخال رقم الهوية لطلب شهادة الدورة',
+        'identity_number' => 'رقم الهوية',
+        'request_certificate' => 'طلب شهادة',
+        'success' => 'تم طلب شهادة الدورة بنجاح',
+    ],
+    'header' => [
+        'home' => 'الرئيسية',
+        'about' => 'عن الجمعية',
+        'features' => 'الإنجازات',
+        'projects' => 'المشاريع',
+        'contact' => 'تواصل معنا', 
+        'sign_in' => 'تسجيل الدخول',
+    ],
+    'home' => [ 
+        'about' => 'عن الجمعية', 
+        'why_choose_us_title' => 'لماذا نحن؟', 
+        'projects' => 'المشاريع',
+        'read_more' => 'المزيد',
+        'achievements' => 'الإنجازات',
+        'partners' => 'الشركاء',
+        'what_people_say' => 'ما يقوله الناس عننا',
+        'address' => 'العنوان',
+        'phone' => 'الهاتف',
+        'email' => 'البريد الإلكتروني',
+        'working_hours' => 'ساعات العمل',
+        'contact' => 'تواصل معنا',
+    ],
+    'footer' => [
+        'newsletter_title' => 'اشترك في نشرتنا الإخبارية',
+        'newsletter_description' => 'ابق على اطلاع على آخر الأخبار والتحديثات على منتجاتنا وخدماتنا',
+        'newsletter_placeholder' => 'أدخل بريدك الإلكتروني...',
+        'newsletter_button' => 'اشترك',
+        'newsletter_success' => 'تم الاشتراك بنجاح',
+        'link1' => 'روابط تهمك',
+        'link2' => 'خدماتنا',
+        'link3' => 'المزيد',
+    ],
+];

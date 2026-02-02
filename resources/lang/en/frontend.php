@@ -1,0 +1,53 @@
+<?php
+
+return [
+    'course_attendance' => [
+        'title' => 'Course Attendance',
+        'description' => 'Please enter your identity number to check attendance',
+        'identity_number' => 'Identity Number',
+        'check_attendance' => 'Check Attendance',
+        'user_not_found' => 'User not found',
+        'not_registered' => 'User not registered in the course',
+        'already_attended' => 'User already attended the course',
+        'success' => 'Attendance checked successfully',
+    ],
+    'course_certificate' => [
+        'title' => 'Request Certificate',
+        'description' => 'Please enter your identity number to request a certificate',
+        'identity_number' => 'Identity Number',
+        'request_certificate' => 'Request Certificate',
+        'success' => 'Certificate requested successfully',
+    ],
+    'header' => [
+        'home' => 'Home',
+        'about' => 'About',
+        'features' => 'Features',
+        'projects' => 'Projects',
+        'contact' => 'Contact',
+        'sign_in' => 'Sign In',
+    ],
+    'home' => [
+        'about' => 'About',
+        'why_choose_us_title' => 'Why Choose Us?',
+        'projects' => 'Projects',
+        'read_more' => 'Read More',
+        'achievements' => 'Achievements',
+        'partners' => 'Partners',
+        'what_people_say' => 'What People Say',
+        'address' => 'Address',
+        'phone' => 'Phone',
+        'email' => 'Email',
+        'working_hours' => 'Working Hours',
+        'contact' => 'Contact',
+    ],
+    'footer' => [
+        'newsletter_title' => 'Subscribe to our News Letter',
+        'newsletter_description' => 'Stay up-to-date with the latest news and updates on our products and services',
+        'newsletter_placeholder' => 'Enter Your Email Address...',
+        'newsletter_button' => 'Subscribe',
+        'newsletter_success' => 'Subscription created successfully',
+        'link1' => 'Links',
+        'link2' => 'Our Services',
+        'link3' => 'More',
+    ],
+];

@@ -1,0 +1,3 @@
+php artisan tenants:seed --tenants=37f831d0-d951-44a8-85bb-ab6e2affed7f --class="Database\Seeders\Tenant\FakeDataSeeder"
+php artisan tenants:migrate-fresh --tenants=37f831d0-d951-44a8-85bb-ab6e2affed7f
+php artisan tenants:migrate --tenants=37f831d0-d951-44a8-85bb-ab6e2affed7f
