@@ -174,7 +174,7 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'subscription_delete', 'type' => 'subscription', 'parent' => 0],
             ['id'    => $i++,  'title' => 'subscription_access', 'type' => 'subscription', 'parent' => 0],
             
-            ['id'    => $i++,  'title' => 'services_managment_access', 'type' => 'service.course.course_student.consultant.consultant_schedule.loan.dynamic_service.donation.donator.project', 'parent' => 1],
+            ['id'    => $i++,  'title' => 'services_managment_access', 'type' => 'service.course.course_student.consultant.consultant_schedule.loan.dynamic_service.donation.donator.project.donation_allocation', 'parent' => 1],
             ['id'    => $i++,  'title' => 'service_create', 'type' => 'service', 'parent' => 0],
             ['id'    => $i++,  'title' => 'service_edit', 'type' => 'service', 'parent' => 0],
             ['id'    => $i++,  'title' => 'service_show', 'type' => 'service', 'parent' => 0],
@@ -223,6 +223,9 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'project_show', 'type' => 'project', 'parent' => 0],
             ['id'    => $i++,  'title' => 'project_delete', 'type' => 'project', 'parent' => 0],
             ['id'    => $i++,  'title' => 'project_access', 'type' => 'project', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'donation_allocation_create', 'type' => 'donation_allocation', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'donation_allocation_delete', 'type' => 'donation_allocation', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'donation_allocation_access', 'type' => 'donation_allocation', 'parent' => 0],
             
             ['id'    => $i++,  'title' => 'letters_managment_access', 'type' => 'incoming_letter.letters_organization.outgoing_letter.building.letter_archive', 'parent' => 1],
             ['id'    => $i++,  'title' => 'incoming_letter_create', 'type' => 'incoming_letter', 'parent' => 0],

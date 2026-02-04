@@ -40,6 +40,12 @@ class Donation extends Model
         'updated_at',
     ];
 
+    protected $casts = [
+        'total_amount'     => 'decimal:2',
+        'used_amount'      => 'decimal:2',
+        'remaining_amount' => 'decimal:2',
+    ];
+
     protected function serializeDate(DateTimeInterface $date)
     {
         return $date->format('Y-m-d H:i:s');
@@ -66,6 +72,16 @@ class Donation extends Model
     public function items()
     {
         return $this->hasMany(DonationItem::class, 'donation_id', 'id');
+    }
+
+    public function allocations()
+    {
+        return $this->hasMany(DonationAllocation::class, 'donation_id', 'id');
+    }
+
+    public function beneficiaryOrders()
+    {
+        return $this->belongsToMany(BeneficiaryOrder::class, 'donation_allocations', 'donation_id', 'beneficiary_order_id');
     }
 }
 

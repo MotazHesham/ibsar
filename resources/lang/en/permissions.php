@@ -273,6 +273,9 @@ return [
     'project_show' => 'Project Show',
     'project_delete' => 'Project Delete',
     'project_access' => 'Project Access',
+    'donation_allocation_create' => 'Allocate Donations',
+    'donation_allocation_delete' => 'Delete Donation Allocation',
+    'donation_allocation_access' => 'Donation Allocations Access',
     
     // Letters Management Permissions
     'letters_managment_access' => 'Letters Management Access',

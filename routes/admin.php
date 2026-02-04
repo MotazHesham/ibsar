@@ -245,6 +245,12 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     Route::delete('projects/destroy', 'ProjectsController@massDestroy')->name('projects.massDestroy');
     Route::resource('projects', 'ProjectsController');
 
+    // Beneficiary Order Donation Allocations
+    Route::post('beneficiary-orders/{beneficiaryOrder}/allocate-donation', 'BeneficiaryOrdersController@allocateDonation')
+        ->name('beneficiary-orders.allocate-donation');
+    Route::delete('beneficiary-orders/{beneficiaryOrder}/donation-allocations/{donationAllocation}', 'BeneficiaryOrdersController@removeDonationAllocation')
+        ->name('beneficiary-orders.donation-allocations.destroy');
+
     // Donators
     Route::delete('donators/destroy', 'DonatorsController@massDestroy')->name('donators.massDestroy');
     Route::resource('donators', 'DonatorsController');

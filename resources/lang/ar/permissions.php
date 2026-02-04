@@ -273,6 +273,9 @@ return [
     'project_show' => 'عرض مشروع تبرع',
     'project_delete' => 'حذف مشروع تبرع',
     'project_access' => 'قائمة مشاريع التبرع',
+    'donation_allocation_create' => 'تخصيص التبرعات',
+    'donation_allocation_delete' => 'حذف تخصيص التبرعات',
+    'donation_allocation_access' => 'قائمة تخصيصات التبرعات',
     
     // Letters Management Permissions
     'letters_managment_access' => 'إدارة المراسلات الإدارية',

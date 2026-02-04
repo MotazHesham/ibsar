@@ -105,6 +105,16 @@ class BeneficiaryOrder extends Model implements HasMedia
         return $this->hasOne(DynamicServiceOrder::class, 'beneficiary_order_id');
     }
 
+    public function donationAllocations()
+    {
+        return $this->hasMany(DonationAllocation::class, 'beneficiary_order_id', 'id');
+    }
+
+    public function donations()
+    {
+        return $this->belongsToMany(Donation::class, 'donation_allocations', 'beneficiary_order_id', 'donation_id');
+    }
+
     public function getAttachmentAttribute()
     {
         return $this->getMedia('attachment')->last();

@@ -26,6 +26,9 @@ use App\Models\Loan;
 use App\Models\ServiceLoanInstallment;
 use App\Services\BeneficiaryOrderService;
 use App\Services\OdooService;
+use App\Services\DonationAllocationService;
+use App\Http\Requests\Admin\StoreBeneficiaryOrderDonationAllocationRequest;
+use App\Models\Donation;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
@@ -39,11 +42,16 @@ class BeneficiaryOrdersController extends Controller
     use MediaUploadingTrait;
     protected $beneficiaryOrderService;
     protected $odooService;
+    protected $donationAllocationService;
 
-    public function __construct(BeneficiaryOrderService $beneficiaryOrderService, OdooService $odooService)
-    {
-        $this->beneficiaryOrderService = $beneficiaryOrderService;
-        $this->odooService = $odooService;
+    public function __construct(
+        BeneficiaryOrderService $beneficiaryOrderService,
+        OdooService $odooService,
+        DonationAllocationService $donationAllocationService
+    ) {
+        $this->beneficiaryOrderService   = $beneficiaryOrderService;
+        $this->odooService               = $odooService;
+        $this->donationAllocationService = $donationAllocationService;
     }
 
     public function updateStatus(BeneficiaryOrder $beneficiaryOrder, Request $request)
@@ -320,11 +328,52 @@ class BeneficiaryOrdersController extends Controller
             }
         }
 
-        $beneficiaryOrder->load('beneficiary', 'service', 'status', 'specialist', 'beneficiaryOrderFollowups.user', 'dynamicServiceOrder.dynamicService', 'dynamicServiceOrder.workflow.transitions.user');
+        $beneficiaryOrder->load(
+            'beneficiary',
+            'service',
+            'status',
+            'specialist',
+            'beneficiaryOrderFollowups.user',
+            'dynamicServiceOrder.dynamicService',
+            'dynamicServiceOrder.workflow.transitions.user',
+            'donationAllocations.donation.donator'
+        );
 
         $activityLogs = CustomActivityLog::inLog('beneficiary_order_activity-' . $beneficiaryOrder->id)->orderBy('id', 'desc')->paginate(10);
         $statuses = ServiceStatus::orderBy('ordering', 'desc')->pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
         $specialists = User::where('user_type', 'staff')->pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
+
+        $totalAllocated = $beneficiaryOrder->donationAllocations->sum('allocated_amount');
+        $fundingSummary = [
+            'total_allocated'   => $totalAllocated,
+        ];
+
+        $availableDonations = Donation::with(['donator', 'items', 'project'])
+            ->where('remaining_amount', '>', 0)
+            ->get();
+
+        $donationsData = $availableDonations->mapWithKeys(function (Donation $donation) {
+            $typeLabel = Donation::DONATION_TYPE_SELECT[$donation->donation_type] ?? $donation->donation_type;
+
+            return [
+                $donation->id => [
+                    'id'               => $donation->id,
+                    'donator'          => optional($donation->donator)->name,
+                    'project_id'       => $donation->project_id,
+                    'project_name'     => optional($donation->project)->name,
+                    'donation_type'    => $donation->donation_type,
+                    'type'             => $typeLabel,
+                    'remaining_amount' => (float) $donation->remaining_amount,
+                    'items'            => $donation->items->map(function ($item) {
+                        return [
+                            'item_name'  => $item->item_name,
+                            'quantity'   => (float) $item->quantity,
+                            'unit_price' => (float) $item->unit_price,
+                        ];
+                    })->toArray(),
+                ],
+            ];
+        })->toArray();
 
         if (request()->ajax()) {
             return response()->json([
@@ -333,7 +382,45 @@ class BeneficiaryOrdersController extends Controller
             ]);
         }
 
-        return view('admin.beneficiaryOrders.show', compact('beneficiaryOrder', 'activityLogs', 'statuses', 'specialists'));
+        return view('admin.beneficiaryOrders.show', compact(
+            'beneficiaryOrder',
+            'activityLogs',
+            'statuses',
+            'specialists',
+            'fundingSummary',
+            'availableDonations',
+            'donationsData'
+        ));
+    }
+
+    public function allocateDonation(
+        StoreBeneficiaryOrderDonationAllocationRequest $request,
+        BeneficiaryOrder $beneficiaryOrder
+    ) {
+        abort_if(Gate::denies('donation_allocation_create'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        $data = $request->validated();
+
+        $this->donationAllocationService->allocate(
+            (int) $data['donation_id'],
+            (int) $beneficiaryOrder->id,
+            (float) $data['allocated_amount']
+        );
+
+        return redirect()->route('admin.beneficiary-orders.show', $beneficiaryOrder->id);
+    }
+
+    public function removeDonationAllocation(BeneficiaryOrder $beneficiaryOrder, \App\Models\DonationAllocation $donationAllocation)
+    {
+        abort_if(Gate::denies('donation_allocation_delete'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        if ($donationAllocation->beneficiary_order_id !== $beneficiaryOrder->id) {
+            abort(404);
+        }
+
+        $this->donationAllocationService->deallocate($donationAllocation);
+
+        return redirect()->route('admin.beneficiary-orders.show', $beneficiaryOrder->id);
     }
 
     public function destroy(BeneficiaryOrder $beneficiaryOrder)
