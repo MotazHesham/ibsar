@@ -172,7 +172,10 @@
                             request()->is('admin/consultant-schedules/*') ||
                             request()->is('admin/consultants/*') ||
                             request()->is('admin/buildings/*') ||
-                            request()->is('admin/loans/*')
+                            request()->is('admin/loans/*') ||
+                            request()->is('admin/donations/*') ||
+                            request()->is('admin/donators/*') ||
+                            request()->is('admin/projects/*')
                                 ? true
                                 : false;
                     @endphp
@@ -194,24 +197,24 @@
                                 </li>
                             @endcan
                             @can('course_access')
-                                <li class="slide">
+                                {{-- <li class="slide">
                                     <a href="{{ route('admin.courses.index') }}"
                                         class="side-menu__item {{ request()->is('admin/courses/*') ? 'active' : '' }}">{{ trans('cruds.course.title') }}</a>
-                                </li>
+                                </li> --}}
                             @endcan
                             @can('consultant_access')
-                                <li class="slide">
+                                {{-- <li class="slide">
                                     <a href="{{ route('admin.consultants.index') }}"
                                         class="side-menu__item {{ request()->is('admin/consultants/*') ? 'active' : '' }}">{{ trans('cruds.consultant.title') }}</a>
-                                </li>
+                                </li> --}}
                             @endcan
                             @can('consultant_schedule_access')
-                                <li class="slide">
+                                {{-- <li class="slide">
                                     <a href="{{ route('admin.consultant-schedules.index') }}"
                                         class="side-menu__item {{ request()->is('admin/consultant-schedules/*') ? 'active' : '' }}">
                                         {{ trans('cruds.consultantSchedule.title') }}
                                     </a>
-                                </li>
+                                </li> --}}
                             @endcan
                             @can('building_access')
                                 {{-- <li class="slide">
@@ -220,9 +223,27 @@
                             </li> --}}
                             @endcan
                             @can('loan_access')
-                                <li class="slide">
+                                {{-- <li class="slide">
                                     <a href="{{ route('admin.loans.index') }}"
                                         class="side-menu__item {{ request()->is('admin/loans/*') ? 'active' : '' }}">{{ trans('cruds.loan.title') }}</a>
+                                </li> --}}
+                            @endcan
+                            @can('project_access')
+                                <li class="slide">
+                                    <a href="{{ route('admin.projects.index') }}"
+                                        class="side-menu__item {{ request()->is('admin/projects/*') ? 'active' : '' }}">{{ trans('cruds.project.title') }}</a>
+                                </li>
+                            @endcan
+                            @can('donation_access')
+                                <li class="slide">
+                                    <a href="{{ route('admin.donations.index') }}"
+                                        class="side-menu__item {{ request()->is('admin/donations/*') ? 'active' : '' }}">{{ trans('cruds.donation.title') }}</a>
+                                </li>
+                            @endcan
+                            @can('donator_access')
+                                <li class="slide">
+                                    <a href="{{ route('admin.donators.index') }}"
+                                        class="side-menu__item {{ request()->is('admin/donators/*') ? 'active' : '' }}">{{ trans('cruds.donator.title') }}</a>
                                 </li>
                             @endcan
                         </ul>

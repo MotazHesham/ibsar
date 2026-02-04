@@ -11,9 +11,17 @@
                 <div class="col-xl-2">
                     <nav class="nav nav-tabs flex-column nav-style-5" role="tablist">
                         @foreach ($settings as $group_name => $raws) 
-                            <a class="nav-link @if ($loop->first) active @endif" data-bs-toggle="tab"
-                            role="tab" aria-current="page" href="#{{ $group_name }}-vertical-link"
-                            aria-selected="@if ($loop->first) true @else false @endif">{{ trans('cruds.setting.group_name.' . $group_name) }}</a> 
+                            @php
+                                $pass = true; 
+                                if($group_name == 'theme_settings'){
+                                    $pass = false;
+                                }
+                            @endphp
+                            @if($pass)
+                                <a class="nav-link @if ($loop->first) active @endif" data-bs-toggle="tab"
+                                role="tab" aria-current="page" href="#{{ $group_name }}-vertical-link"
+                                aria-selected="@if ($loop->first) true @else false @endif">{{ trans('cruds.setting.group_name.' . $group_name) }}</a>
+                            @endif
                         @endforeach
                     </nav>
                 </div>

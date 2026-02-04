@@ -12,7 +12,7 @@
     @include('partials.breadcrumb')
 
     <div class="row">
-        <div class="col-xl-2">
+        {{-- <div class="col-xl-2">
             <div class="card custom-card">
                 <div class="ribbon-2 ribbon-primary ribbon-left">
                     <span class="ribbon-text">دورات</span>
@@ -33,7 +33,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
         {{-- <div class="col-xl-2">
             <div class="card custom-card">
                 <div class="ribbon-2 ribbon-secondary ribbon-left">
@@ -56,7 +56,7 @@
                 </div>
             </div>
         </div> --}}
-        <div class="col-xl-2">
+        {{-- <div class="col-xl-2">
             <div class="card custom-card">
                 <div class="ribbon-2 ribbon-warning ribbon-left">
                     <span class="ribbon-text">ماليه</span>
@@ -78,7 +78,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
         <div class="col-xl-2">
             <div class="card custom-card">
                 <div class="ribbon-2 ribbon-info ribbon-left">
@@ -101,7 +101,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-2">
+        {{-- <div class="col-xl-2">
             <div class="card custom-card">
                 <div class="ribbon-2 ribbon-success ribbon-left">
                     <span class="ribbon-text">استشارات</span>
@@ -123,8 +123,8 @@
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="col-xl-2">
+        </div> --}}
+        {{-- <div class="col-xl-2">
             <div class="card custom-card">
                 <div class="ribbon-2 ribbon-danger ribbon-left">
                     <span class="ribbon-text">قروض</span>
@@ -145,7 +145,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
         <div class="col-xl-2">
             <div class="card custom-card">
                 <div class="ribbon-2 ribbon-secondary ribbon-left">

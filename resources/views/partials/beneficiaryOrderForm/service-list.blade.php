@@ -14,7 +14,7 @@
     </div>
 </a>
 
-<!-- Courses Service -->
+{{-- <!-- Courses Service -->
 <a class="card custom-card service-type-card @if (request()->get('service_type') == 'courses') selected @endif"
     href="{{ route(auth()->user()->user_type == 'staff' ? 'admin.beneficiary-orders.create' : 'beneficiary.beneficiary-orders.create', ['service_type' => 'courses']) }}">
     <div class="ribbon-2 ribbon-primary ribbon-left">
@@ -64,7 +64,7 @@
         <input type="radio" name="service_type" value="loan" id="service_loan" class="service-type-radio"
             style="display: none;" @if (request()->get('service_type') == 'loan') checked @endif>
     </div>
-</a>
+</a> --}}
 
 <!-- Dynamic Services -->
 @foreach ($dynamicServices ?? [] as $dynamicService)
@@ -78,7 +78,7 @@
                 <img src="{{ $dynamicService->getFirstMedia('icon')->getUrl() }}" class="card-img mb-3"
                     alt="{{ $dynamicService->title }}">
             @else
-                {{-- <img src="{{ asset('assets/images/services/dynamic.png') }}" class="card-img mb-3" alt="dynamic"> --}}
+                <img src="{{ asset('assets/images/services/dynamic.png') }}" class="card-img mb-3" alt="dynamic">
             @endif
             <input type="radio" name="service_type" value="dynamic_{{ $dynamicService->id }}"
                 id="service_dynamic_{{ $dynamicService->id }}" class="service-type-radio" style="display: none;"

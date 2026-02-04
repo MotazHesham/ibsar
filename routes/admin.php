@@ -241,6 +241,17 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     Route::match(['get', 'post'], 'dynamic-services/meeting-attendance', 'DynamicServiceController@meetingAttendance')->name('dynamic-services.meeting-attendance');
     Route::resource('dynamic-services', 'DynamicServiceController');
 
+    // Projects (Donations)
+    Route::delete('projects/destroy', 'ProjectsController@massDestroy')->name('projects.massDestroy');
+    Route::resource('projects', 'ProjectsController');
+
+    // Donators
+    Route::delete('donators/destroy', 'DonatorsController@massDestroy')->name('donators.massDestroy');
+    Route::resource('donators', 'DonatorsController');
+
+    // Donations
+    Route::resource('donations', 'DonationsController')->only(['index', 'create', 'store', 'show']);
+
     // Dynamic Service Workflows
     Route::get('dynamic-service-workflows/{dynamicServiceOrder}', 'DynamicServiceWorkflowController@show')->name('dynamic-service-workflows.show');
     Route::post('dynamic-service-workflows/{workflow}/transition', 'DynamicServiceWorkflowController@transition')->name('dynamic-service-workflows.transition');
