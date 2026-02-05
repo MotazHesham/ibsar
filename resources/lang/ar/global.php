@@ -20,6 +20,7 @@ return [
     'please_fill_required_fields'    => 'يرجى إدخال الحقول المطلوبة', 
     'add_member'                     => 'إضافة عضو',
     'member'                         => 'العضو',
+    'remaining'                       => 'المتبقي',
     'identity_number'                => 'رقم الهوية',
     'add_contact'                     => 'إضافة جهة اتصال',
     'contact'                         => 'جهة الاتصال',

@@ -14,7 +14,7 @@ class StoreBeneficiaryOrderDonationAllocationRequest extends FormRequest
 
     public function rules()
     {
-        return [
+        $rules = [
             'donation_id' => [
                 'required',
                 'integer',
@@ -26,6 +26,27 @@ class StoreBeneficiaryOrderDonationAllocationRequest extends FormRequest
                 'min:0.01',
             ],
         ];
+
+        // Only validate item fields if the donation type is "items"
+        $donationId = $this->input('donation_id');
+        if ($donationId) {
+            $donation = \App\Models\Donation::find($donationId);
+            if ($donation && $donation->donation_type === \App\Models\Donation::TYPE_ITEMS) {
+                // For items donations, validate item selection and quantity
+                $rules['allocation_item'] = [
+                    'required',
+                    'integer',
+                    'min:0',
+                ];
+                $rules['item_quantity'] = [
+                    'required',
+                    'numeric',
+                    'min:0.01',
+                ];
+            }
+        }
+
+        return $rules;
     }
 }
 

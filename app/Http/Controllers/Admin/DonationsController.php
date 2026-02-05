@@ -90,7 +90,9 @@ class DonationsController extends Controller
 
         if ($data['donation_type'] === \App\Models\Donation::TYPE_ITEMS) {
             $donation = $this->donationService->createDonationWithItems($data);
-        } else {
+        } else { 
+            $data['remaining_amount'] = $data['total_amount'];
+            $data['used_amount'] = 0;
             $donation = Donation::create($data);
         }
 

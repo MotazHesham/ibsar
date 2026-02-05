@@ -29,6 +29,7 @@ use App\Services\OdooService;
 use App\Services\DonationAllocationService;
 use App\Http\Requests\Admin\StoreBeneficiaryOrderDonationAllocationRequest;
 use App\Models\Donation;
+use App\Models\DonationAllocationItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
@@ -336,7 +337,9 @@ class BeneficiaryOrdersController extends Controller
             'beneficiaryOrderFollowups.user',
             'dynamicServiceOrder.dynamicService',
             'dynamicServiceOrder.workflow.transitions.user',
-            'donationAllocations.donation.donator'
+            'donationAllocations.donation.donator',
+            'donationAllocations.donation.items',
+            'donationAllocations.items.donationItem'
         );
 
         $activityLogs = CustomActivityLog::inLog('beneficiary_order_activity-' . $beneficiaryOrder->id)->orderBy('id', 'desc')->paginate(10);
@@ -365,12 +368,22 @@ class BeneficiaryOrdersController extends Controller
                     'type'             => $typeLabel,
                     'remaining_amount' => (float) $donation->remaining_amount,
                     'items'            => $donation->items->map(function ($item) {
+                        // Calculate remaining quantity for this item
+                        $allocatedQuantity = \App\Models\DonationAllocationItem::where('donation_item_id', $item->id)
+                            ->sum('allocated_quantity');
+                        $remainingQuantity = max(0, (float) $item->quantity - (float) $allocatedQuantity);
+                        
                         return [
-                            'item_name'  => $item->item_name,
-                            'quantity'   => (float) $item->quantity,
-                            'unit_price' => (float) $item->unit_price,
+                            'item_id'         => $item->id,
+                            'item_name'       => $item->item_name,
+                            'quantity'        => (float) $item->quantity,
+                            'remaining_quantity' => $remainingQuantity,
+                            'unit_price'      => (float) $item->unit_price,
                         ];
-                    })->toArray(),
+                    })->filter(function ($item) {
+                        // Only include items with remaining quantity > 0
+                        return $item['remaining_quantity'] > 0;
+                    })->values()->toArray(),
                 ],
             ];
         })->toArray();
@@ -401,10 +414,15 @@ class BeneficiaryOrdersController extends Controller
 
         $data = $request->validated();
 
+        $itemIndex = $request->has('allocation_item') ? (int) $request->input('allocation_item') : null;
+        $itemQuantity = $request->has('item_quantity') ? (float) $request->input('item_quantity') : null;
+
         $this->donationAllocationService->allocate(
             (int) $data['donation_id'],
             (int) $beneficiaryOrder->id,
-            (float) $data['allocated_amount']
+            (float) $data['allocated_amount'],
+            $itemIndex,
+            $itemQuantity
         );
 
         return redirect()->route('admin.beneficiary-orders.show', $beneficiaryOrder->id);

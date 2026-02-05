@@ -30,6 +30,8 @@ class DonationService
 
             $donationData = $data;
             $donationData['total_amount'] = $total;
+            $donationData['remaining_amount'] = $total;
+            $donationData['used_amount'] = 0;
 
             /** @var \App\Models\Donation $donation */
             $donation = Donation::create($donationData);

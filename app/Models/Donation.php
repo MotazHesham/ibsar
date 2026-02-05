@@ -33,6 +33,8 @@ class Donation extends Model
         'donator_id',
         'project_id',
         'donation_type',
+        'used_amount',
+        'remaining_amount',
         'total_amount',
         'notes',
         'donated_at',

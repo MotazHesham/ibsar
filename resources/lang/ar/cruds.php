@@ -395,7 +395,7 @@ return [
         'fields'         => [
             'id'                => 'id',
             'id_helper'         => ' ',
-            'name'              => 'الاسم',
+            'name'              => 'المشروع',
             'name_helper'       => ' ',
             'description'       => 'الوصف',
             'description_helper'=> ' ',
@@ -425,9 +425,13 @@ return [
             'created_at_helper'     => ' ',
             'updated_at'            => 'تاريخ التحديث',
             'updated_at_helper'     => ' ',
+            'total'                 => 'المجموع',
         ],
         'extra' => [
             'allocate' => 'تخصيص',
+            'show_items' => 'عرض العناصر',
+            'allocation_items' => 'العناصر المخصصة',
+            'no_items_found' => 'لا توجد عناصر مخصصة',
         ],
     ],
     'region' => [

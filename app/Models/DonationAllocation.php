@@ -36,5 +36,10 @@ class DonationAllocation extends Model
     {
         return $this->belongsTo(BeneficiaryOrder::class);
     }
+
+    public function items()
+    {
+        return $this->hasMany(DonationAllocationItem::class, 'donation_allocation_id', 'id');
+    }
 }
 
