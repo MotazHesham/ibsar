@@ -455,6 +455,10 @@ return [
     'donationItem' => [
         'title'          => 'Donation Items',
         'title_singular' => 'Donation Item',
+        'donation_type' => [
+            'money' => 'Money',
+            'items' => 'Items',
+        ],
         'fields'         => [
             'id'            => 'ID',
             'id_helper'     => ' ',
@@ -543,6 +547,10 @@ return [
     'donation' => [
         'title'          => 'Donations',
         'title_singular' => 'Donation',
+        'donation_type' => [
+            'money' => 'Money',
+            'items' => 'Items',
+        ],
         'fields'         => [
             'id'            => 'ID',
             'id_helper'     => ' ',

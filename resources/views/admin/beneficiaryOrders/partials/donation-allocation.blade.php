@@ -606,24 +606,30 @@
             console.log('Showing items for allocation:', allocationId);
             const modalContent = document.getElementById('allocation-items-content');
             const modal = new bootstrap.Modal(document.getElementById('allocationItemsModal'));
-            
+
             // Get allocation data from the page
-            const allocationData = @json($beneficiaryOrder->donationAllocations->load('items.donationItem')->keyBy('id')->map(function($allocation) {
-                return [
-                    'id' => $allocation->id,
-                    'donation_id' => $allocation->donation_id,
-                    'allocated_amount' => $allocation->allocated_amount,
-                    'items' => $allocation->items->map(function($item) {
-                        return [
+            @php
+                $allocationData = [];
+                foreach ($beneficiaryOrder->donationAllocations->load('items.donationItem') as $allocation) {
+                    $items = [];
+                    foreach ($allocation->items as $item) {
+                        $items[] = [
                             'item_name' => $item->donationItem->item_name,
                             'allocated_quantity' => $item->allocated_quantity,
                             'unit_price' => $item->donationItem->unit_price,
                             'allocated_amount' => $item->allocated_amount,
                         ];
-                    })->toArray(),
-                ];
-            }));
-            
+                    }
+                    $allocationData[$allocation->id] = [
+                        'id' => $allocation->id,
+                        'donation_id' => $allocation->donation_id,
+                        'allocated_amount' => $allocation->allocated_amount,
+                        'items' => $items,
+                    ];
+                }
+            @endphp 
+            const allocationData = @json($allocationData);
+
             const allocation = allocationData[allocationId];
             
             if (!allocation || !allocation.items || allocation.items.length === 0) {

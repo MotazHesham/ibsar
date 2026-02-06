@@ -343,6 +343,10 @@ return [
     'donation' => [
         'title'          => 'التبرعات',
         'title_singular' => 'تبرع',
+        'donation_type' => [
+            'money' => 'مال',
+            'items' => 'عناصر',
+        ],
         'fields'         => [
             'id'            => 'id',
             'id_helper'     => ' ',
@@ -369,6 +373,10 @@ return [
     'donationItem' => [
         'title'          => 'عناصر التبرع',
         'title_singular' => 'عنصر تبرع',
+        'donation_type' => [
+            'money' => 'مال',
+            'items' => 'عناصر',
+        ],
         'fields'         => [
             'id'            => 'id',
             'id_helper'     => ' ',
