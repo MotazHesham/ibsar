@@ -1,0 +1,68 @@
+{
+    "workflow": {
+        "key": "social_aid",
+        "name": "Social Aid Request",
+        "description": "Workflow for social aid requests: submission, eligibility review, approval/rejection, and optional document generation.",
+        "entity_type": "App\\\\Models\\\\DynamicServiceOrder",
+        "version": "1.0",
+        "is_active": true
+    },
+    "steps": [
+        {
+            "key": "submit_request",
+            "name": "Submit Request",
+            "type": "human",
+            "position": 0,
+            "is_start": true,
+            "is_end": false,
+            "allowed_roles": [2],
+            "config": {}
+        },
+        {
+            "key": "eligibility_review",
+            "name": "Eligibility Review",
+            "type": "human",
+            "position": 1,
+            "is_start": false,
+            "is_end": false,
+            "allowed_roles": [1],
+            "config": {}
+        },
+        {
+            "key": "generate_document",
+            "name": "Generate Approval Document",
+            "type": "auto",
+            "position": 2,
+            "is_start": false,
+            "is_end": false,
+            "allowed_roles": null,
+            "config": {}
+        },
+        {
+            "key": "approved",
+            "name": "Approved",
+            "type": "human",
+            "position": 3,
+            "is_start": false,
+            "is_end": true,
+            "allowed_roles": null,
+            "config": {}
+        },
+        {
+            "key": "rejected",
+            "name": "Rejected",
+            "type": "human",
+            "position": 4,
+            "is_start": false,
+            "is_end": true,
+            "allowed_roles": null,
+            "config": {}
+        }
+    ],
+    "transitions": [
+        { "from": "submit_request", "to": "eligibility_review", "condition_key": "submitted", "name": "Submit" },
+        { "from": "eligibility_review", "to": "generate_document", "condition_key": "approved", "name": "Approve" },
+        { "from": "eligibility_review", "to": "rejected", "condition_key": "rejected", "name": "Reject" },
+        { "from": "generate_document", "to": "approved", "condition_key": "completed", "name": "Complete" }
+    ]
+}

@@ -193,8 +193,9 @@ return [
         App\Providers\AuthServiceProvider::class,
         App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
-        App\Providers\RouteServiceProvider::class, 
-        App\Providers\FieldVisibilityServiceProvider::class, 
+        App\Providers\RouteServiceProvider::class,
+        App\Providers\FieldVisibilityServiceProvider::class,
+        App\Providers\WorkflowServiceProvider::class,
 
     ],
 

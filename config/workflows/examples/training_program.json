@@ -1,0 +1,81 @@
+{
+    "workflow": {
+        "key": "training_program",
+        "name": "Training & Qualification Program",
+        "description": "Workflow for training and qualification program applications: submission, review, capacity check, approval, and completion.",
+        "entity_type": "App\\\\Models\\\\DynamicServiceOrder",
+        "version": "1.0",
+        "is_active": true
+    },
+    "steps": [
+        {
+            "key": "submit_application",
+            "name": "Submit Application",
+            "type": "human",
+            "position": 0,
+            "is_start": true,
+            "is_end": false,
+            "allowed_roles": [2],
+            "config": { "form_section": "application" }
+        },
+        {
+            "key": "initial_review",
+            "name": "Initial Review",
+            "type": "human",
+            "position": 1,
+            "is_start": false,
+            "is_end": false,
+            "allowed_roles": [1],
+            "config": {}
+        },
+        {
+            "key": "check_capacity",
+            "name": "Check Capacity",
+            "type": "decision",
+            "position": 2,
+            "is_start": false,
+            "is_end": false,
+            "allowed_roles": null,
+            "config": {}
+        },
+        {
+            "key": "wait_for_capacity",
+            "name": "Waiting for Capacity",
+            "type": "waiting",
+            "position": 3,
+            "is_start": false,
+            "is_end": false,
+            "allowed_roles": null,
+            "config": {}
+        },
+        {
+            "key": "send_acceptance_notification",
+            "name": "Send Acceptance Notification",
+            "type": "auto",
+            "position": 4,
+            "is_start": false,
+            "is_end": false,
+            "allowed_roles": null,
+            "config": { "event": "workflow.step.auto_executed" }
+        },
+        {
+            "key": "completed",
+            "name": "Completed",
+            "type": "human",
+            "position": 5,
+            "is_start": false,
+            "is_end": true,
+            "allowed_roles": null,
+            "config": {}
+        }
+    ],
+    "transitions": [
+        { "from": "submit_application", "to": "initial_review", "condition_key": "submitted", "name": "Submit" },
+        { "from": "initial_review", "to": "check_capacity", "condition_key": "approved", "name": "Approve" },
+        { "from": "initial_review", "to": "submit_application", "condition_key": "rejected", "name": "Return to Applicant", "is_loopback": true },
+        { "from": "check_capacity", "to": "send_acceptance_notification", "condition_expression": "beneficiaries_count < required_capacity", "name": "Has capacity" },
+        { "from": "check_capacity", "to": "wait_for_capacity", "condition_expression": "beneficiaries_count >= required_capacity", "name": "No capacity" },
+        { "from": "wait_for_capacity", "to": "check_capacity", "condition_key": "retry", "name": "Retry" },
+        { "from": "send_acceptance_notification", "to": "completed", "condition_key": "completed", "name": "Complete" }
+    ]
+}

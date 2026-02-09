@@ -38,6 +38,22 @@
                     </div>
                 </div>
             @endif
+            @if($beneficiaryOrder->dynamicServiceOrder)
+                <div class="mb-2">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">سير العمل (المحرك الجديد)</h6>
+                            @php $wi = $beneficiaryOrder->dynamicServiceOrder->workflowInstance; @endphp
+                            @if($wi)
+                                <p class="text-muted mb-1">الحالة: <span class="badge bg-success">{{ $wi->status === 'running' ? 'قيد التشغيل' : ($wi->status === 'on_hold' ? 'في الانتظار' : $wi->status) }}</span> — {{ $wi->currentStep->name ?? '-' }}</p>
+                                <a href="{{ route('admin.workflow-instances.show', $wi) }}" class="btn btn-outline-primary btn-sm">عرض السير</a>
+                            @else
+                                <a href="{{ route('admin.workflow-instances.create', ['entity_type' => \App\Models\DynamicServiceOrder::class, 'entity_id' => $beneficiaryOrder->dynamicServiceOrder->id]) }}" class="btn btn-outline-secondary btn-sm">بدء سير عمل جديد</a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
             <div class="mb-2">
                 @include('admin.beneficiaryOrders.partials.edit-status')
             </div>

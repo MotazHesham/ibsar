@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\HasWorkflowInstance;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DynamicServiceOrder extends Model
 {
-    use SoftDeletes, HasFactory;
+    use HasFactory, HasWorkflowInstance, SoftDeletes;
 
     public $table = 'dynamic_service_orders';
 
