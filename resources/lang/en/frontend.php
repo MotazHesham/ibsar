@@ -40,6 +40,18 @@ return [
         'working_hours' => 'Working Hours',
         'contact' => 'Contact',
     ],
+    'volunteer' => [
+        'join_title'       => 'Join as Volunteer',
+        'join_description' => 'Fill in the form below to submit your volunteer request.',
+        'submit'           => 'Submit Request',
+        'submitted'        => 'Your request has been received successfully. We will contact you soon.',
+    ],
+    'volunteer' => [
+        'join_title'       => 'Join as Volunteer',
+        'join_description' => 'Fill out the form below to submit your volunteer application.',
+        'submit'           => 'Submit Request',
+        'submitted'        => 'Your request has been submitted successfully. We will contact you soon.',
+    ],
     'footer' => [
         'newsletter_title' => 'Subscribe to our News Letter',
         'newsletter_description' => 'Stay up-to-date with the latest news and updates on our products and services',

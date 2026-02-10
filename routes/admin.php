@@ -258,6 +258,19 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     // Donations
     Route::resource('donations', 'DonationsController')->only(['index', 'create', 'store', 'show']);
 
+    // Volunteers
+    Route::delete('volunteers/destroy', 'VolunteersController@massDestroy')->name('volunteers.massDestroy');
+    Route::post('volunteers/media', 'VolunteersController@storeMedia')->name('volunteers.storeMedia');
+    Route::post('volunteers/ckmedia', 'VolunteersController@storeCKEditorImages')->name('volunteers.storeCKEditorImages');
+    Route::get('volunteers/{id}/verify', 'VolunteersController@verify')->name('volunteers.verify');
+    Route::post('volunteers/verify-submit', 'VolunteersController@verify_submit')->name('volunteers.verify_submit');
+    Route::resource('volunteers', 'VolunteersController');
+
+    // Volunteer Tasks
+    Route::delete('volunteer-tasks/destroy', 'VolunteerTasksController@massDestroy')->name('volunteer-tasks.massDestroy');
+    Route::get('volunteer-tasks/{id}/qr', 'VolunteerTasksController@qr')->name('volunteer-tasks.qr');
+    Route::resource('volunteer-tasks', 'VolunteerTasksController');
+
     // Dynamic Service Workflows
     Route::get('dynamic-service-workflows/{dynamicServiceOrder}', 'DynamicServiceWorkflowController@show')->name('dynamic-service-workflows.show');
     Route::post('dynamic-service-workflows/{workflow}/transition', 'DynamicServiceWorkflowController@transition')->name('dynamic-service-workflows.transition');

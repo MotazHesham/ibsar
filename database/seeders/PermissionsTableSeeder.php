@@ -174,7 +174,8 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'subscription_delete', 'type' => 'subscription', 'parent' => 0],
             ['id'    => $i++,  'title' => 'subscription_access', 'type' => 'subscription', 'parent' => 0],
             
-            ['id'    => $i++,  'title' => 'services_managment_access', 'type' => 'service.course.course_student.consultant.consultant_schedule.loan.dynamic_service.donation.donator.project.donation_allocation', 'parent' => 1],
+            // Services group (services management)
+            ['id'    => $i++,  'title' => 'services_managment_access', 'type' => 'service.course.course_student.consultant.consultant_schedule.loan.dynamic_service', 'parent' => 1],
             ['id'    => $i++,  'title' => 'service_create', 'type' => 'service', 'parent' => 0],
             ['id'    => $i++,  'title' => 'service_edit', 'type' => 'service', 'parent' => 0],
             ['id'    => $i++,  'title' => 'service_show', 'type' => 'service', 'parent' => 0],
@@ -210,6 +211,9 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'dynamic_service_show', 'type' => 'dynamic_service', 'parent' => 0],
             ['id'    => $i++,  'title' => 'dynamic_service_delete', 'type' => 'dynamic_service', 'parent' => 0],
             ['id'    => $i++,  'title' => 'dynamic_service_access', 'type' => 'dynamic_service', 'parent' => 0],
+
+            // Donations group
+            ['id'    => $i++,  'title' => 'donation_managment_access', 'type' => 'donation.donator.project.donation_allocation', 'parent' => 1],
             ['id'    => $i++,  'title' => 'donation_create', 'type' => 'donation', 'parent' => 0],
             ['id'    => $i++,  'title' => 'donation_show', 'type' => 'donation', 'parent' => 0],
             ['id'    => $i++,  'title' => 'donation_access', 'type' => 'donation', 'parent' => 0],
@@ -226,7 +230,20 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'donation_allocation_create', 'type' => 'donation_allocation', 'parent' => 0],
             ['id'    => $i++,  'title' => 'donation_allocation_delete', 'type' => 'donation_allocation', 'parent' => 0],
             ['id'    => $i++,  'title' => 'donation_allocation_access', 'type' => 'donation_allocation', 'parent' => 0],
-            
+
+            // Volunteers group
+            ['id'    => $i++,  'title' => 'volunteer_managment_access', 'type' => 'volunteer.volunteer_task', 'parent' => 1],
+            ['id'    => $i++,  'title' => 'volunteer_create', 'type' => 'volunteer', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'volunteer_edit', 'type' => 'volunteer', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'volunteer_show', 'type' => 'volunteer', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'volunteer_delete', 'type' => 'volunteer', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'volunteer_access', 'type' => 'volunteer', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'volunteer_task_create', 'type' => 'volunteer_task', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'volunteer_task_edit', 'type' => 'volunteer_task', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'volunteer_task_show', 'type' => 'volunteer_task', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'volunteer_task_delete', 'type' => 'volunteer_task', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'volunteer_task_access', 'type' => 'volunteer_task', 'parent' => 0],
+
             ['id'    => $i++,  'title' => 'letters_managment_access', 'type' => 'incoming_letter.letters_organization.outgoing_letter.building.letter_archive', 'parent' => 1],
             ['id'    => $i++,  'title' => 'incoming_letter_create', 'type' => 'incoming_letter', 'parent' => 0],
             ['id'    => $i++,  'title' => 'incoming_letter_edit', 'type' => 'incoming_letter', 'parent' => 0],

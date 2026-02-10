@@ -20,6 +20,7 @@ return [
     'please_fill_required_fields'    => 'Please fill required fields', 
     'add_contact'                     => 'Add Contact',
     'contact'                         => 'Contact',
+    'verify'                         => 'Verify',
     'name'                            => 'Name',
     'phone'                           => 'Phone',
     'identity_number'                => 'Identity Number',

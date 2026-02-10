@@ -163,25 +163,21 @@
                 @endcan
 
 
+                {{-- Services group --}}
                 @can('services_managment_access')
                     @php
-                        $services_managment_routes =
+                        $services_routes =
                             request()->is('admin/services') ||
                             request()->is('admin/services/*') ||
                             request()->is('admin/courses/*') ||
                             request()->is('admin/consultant-schedules/*') ||
                             request()->is('admin/consultants/*') ||
                             request()->is('admin/buildings/*') ||
-                            request()->is('admin/loans/*') ||
-                            request()->is('admin/donations/*') ||
-                            request()->is('admin/donators/*') ||
-                            request()->is('admin/projects/*')
-                                ? true
-                                : false;
+                            request()->is('admin/loans/*');
                     @endphp
-                    <li class="slide has-sub {{ $services_managment_routes ? 'open' : '' }}">
+                    <li class="slide has-sub {{ $services_routes ? 'open' : '' }}">
                         <a href="javascript:void(0);"
-                            class="side-menu__item {{ $services_managment_routes ? 'active' : '' }}">
+                            class="side-menu__item {{ $services_routes ? 'active' : '' }}">
                             <i class="ri-arrow-right-s-line side-menu__angle"></i>
                             <i class="bi bi-hdd-stack"></i>
                             <span class="side-menu__label">{{ trans('cruds.servicesManagment.title') }}</span>
@@ -228,6 +224,29 @@
                                         class="side-menu__item {{ request()->is('admin/loans/*') ? 'active' : '' }}">{{ trans('cruds.loan.title') }}</a>
                                 </li> --}}
                             @endcan
+                        </ul>
+                    </li>
+                @endcan
+
+                    {{-- Donations group --}}
+                    @can('donation_managment_access')
+                    @php
+                        $donations_routes =
+                            request()->is('admin/donations/*') ||
+                            request()->is('admin/donators/*') ||
+                            request()->is('admin/projects/*');
+                    @endphp
+                    <li class="slide has-sub {{ $donations_routes ? 'open' : '' }}">
+                        <a href="javascript:void(0);"
+                            class="side-menu__item {{ $donations_routes ? 'active' : '' }}">
+                            <i class="ri-arrow-right-s-line side-menu__angle"></i>
+                            <i class="bi bi-currency-dollar"></i>
+                            <span class="side-menu__label">{{ trans('cruds.donationManagement.title') }}</span>
+                        </a>
+                        <ul class="slide-menu child1">
+                            <li class="slide side-menu__label1">
+                                <a href="javascript:void(0)">{{ trans('cruds.donationManagement.title') }}</a>
+                            </li>
                             @can('project_access')
                                 <li class="slide">
                                     <a href="{{ route('admin.projects.index') }}"
@@ -248,7 +267,41 @@
                             @endcan
                         </ul>
                     </li>
-                @endcan
+                    @endcan
+
+                    {{-- Volunteers group --}}
+                    @can('volunteer_managment_access')
+                    @php
+                        $volunteers_routes =
+                            request()->is('admin/volunteers/*') ||
+                            request()->is('admin/volunteer-tasks/*');
+                    @endphp
+                    <li class="slide has-sub {{ $volunteers_routes ? 'open' : '' }}">
+                        <a href="javascript:void(0);"
+                            class="side-menu__item {{ $volunteers_routes ? 'active' : '' }}">
+                            <i class="ri-arrow-right-s-line side-menu__angle"></i>
+                            <i class="bi bi-people"></i>
+                            <span class="side-menu__label">{{ trans('cruds.volunteer.title') }}</span>
+                        </a>
+                        <ul class="slide-menu child1">
+                            <li class="slide side-menu__label1">
+                                <a href="javascript:void(0)">{{ trans('cruds.volunteer.title') }}</a>
+                            </li>
+                            @can('volunteer_access')
+                                <li class="slide">
+                                    <a href="{{ route('admin.volunteers.index') }}"
+                                        class="side-menu__item {{ request()->is('admin/volunteers/*') ? 'active' : '' }}">{{ trans('cruds.volunteer.title') }}</a>
+                                </li>
+                            @endcan
+                            @can('volunteer_task_access')
+                                <li class="slide">
+                                    <a href="{{ route('admin.volunteer-tasks.index') }}"
+                                        class="side-menu__item {{ request()->is('admin/volunteer-tasks/*') ? 'active' : '' }}">{{ trans('cruds.volunteerTask.title') }}</a>
+                                </li>
+                            @endcan
+                        </ul>
+                    </li>
+                    @endcan
 
                 <!-- Start::slide__category -->
                 <li class="slide__category"><span
