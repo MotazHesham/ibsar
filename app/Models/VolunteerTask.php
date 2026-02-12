@@ -7,10 +7,13 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
-class VolunteerTask extends Model
+class VolunteerTask extends Model implements HasMedia
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, InteractsWithMedia;
 
     public $table = 'volunteer_tasks';
 
@@ -21,11 +24,12 @@ class VolunteerTask extends Model
     ];
 
     public const STATUS_SELECT = [
-        'pending'   => 'قيد الانتظار',
-        'approved'  => 'موافق عليه',
-        'rejected'  => 'مرفوض',
-        'cancelled' => 'ملغي',
-        'completed' => 'مكتمل',
+        'pending'    => 'قيد الانتظار',
+        'approved'   => 'موافق عليه',
+        'in_progress' => 'قيد التنفيذ',
+        'rejected'   => 'مرفوض',
+        'cancelled'  => 'ملغي',
+        'completed'  => 'مكتمل',
     ];
 
     protected $fillable = [
@@ -42,14 +46,29 @@ class VolunteerTask extends Model
         'cancel_reason',
         'notes',
         'volunteer_id',
+        'started_at',
+        'finished_at',
+        'report',
     ];
 
     protected $dates = [
         'date',
+        'started_at',
+        'finished_at',
         'created_at',
         'updated_at',
         'deleted_at',
     ];
+
+    public function registerMediaConversions(Media $media = null): void
+    {
+        $this->addMediaConversion('thumb')->fit('crop', 100, 100);
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('report_files');
+    }
 
     protected function serializeDate(DateTimeInterface $date)
     {

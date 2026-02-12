@@ -59,7 +59,7 @@
                     </tr>
                     <tr>
                         <th>{{ trans('cruds.volunteerTask.fields.status') }}</th>
-                        <td><span class="badge bg-{{ $volunteerTask->status === 'completed' ? 'success' : ($volunteerTask->status === 'cancelled' ? 'danger' : 'secondary') }}">{{ \App\Models\VolunteerTask::STATUS_SELECT[$volunteerTask->status] ?? $volunteerTask->status }}</span></td>
+                        <td><span class="badge bg-{{ $volunteerTask->status === 'completed' ? 'success' : ($volunteerTask->status === 'cancelled' ? 'danger' : ($volunteerTask->status === 'in_progress' ? 'warning' : 'secondary')) }}">{{ \App\Models\VolunteerTask::STATUS_SELECT[$volunteerTask->status] ?? $volunteerTask->status }}</span></td>
                     </tr>
                     <tr>
                         <th>{{ trans('cruds.volunteerTask.fields.cancel_reason') }}</th>
@@ -69,6 +69,30 @@
                         <th>{{ trans('cruds.volunteerTask.fields.notes') }}</th>
                         <td>{{ $volunteerTask->notes ?? '-' }}</td>
                     </tr>
+                    <tr>
+                        <th>{{ trans('frontend.volunteer.started_at') }}</th>
+                        <td>{{ $volunteerTask->started_at ? \Carbon\Carbon::parse($volunteerTask->started_at)->format('Y-m-d H:i') : '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>{{ trans('frontend.volunteer.finished_at') }}</th>
+                        <td>{{ $volunteerTask->finished_at ? \Carbon\Carbon::parse($volunteerTask->finished_at)->format('Y-m-d H:i') : '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>{{ trans('frontend.volunteer.report') }}</th>
+                        <td>{!! nl2br(e($volunteerTask->report ?? '-')) !!}</td>
+                    </tr>
+                    @if($volunteerTask->getMedia('report_files')->count() > 0)
+                    <tr>
+                        <th>{{ trans('frontend.volunteer.attach_files') }}</th>
+                        <td>
+                            <ul class="list-unstyled mb-0">
+                                @foreach($volunteerTask->getMedia('report_files') as $media)
+                                    <li><a href="{{ $media->getUrl() }}" target="_blank" class="text-primary"><i class="ri-file-line me-1"></i>{{ $media->file_name }}</a></li>
+                                @endforeach
+                            </ul>
+                        </td>
+                    </tr>
+                    @endif
                 </tbody>
             </table>
         </div>
