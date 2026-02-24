@@ -15,8 +15,6 @@ class Authenticate extends Middleware
         if ($request->expectsJson()) {
             return null;
         }
-        return $this->guard()->getName() === 'volunteer'
-            ? route('volunteer.login')
-            : route('login');
+        return route('login');
     }
 }
