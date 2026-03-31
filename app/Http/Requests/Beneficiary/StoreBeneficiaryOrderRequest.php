@@ -164,11 +164,6 @@ class StoreBeneficiaryOrderRequest extends FormRequest
             $dynamicServiceId = \App\Helpers\DynamicServiceHelper::extractDynamicServiceId($this->service_type);
             $dynamicService = \App\Models\DynamicService::find($dynamicServiceId);
             
-            // Require training_service_type for training category
-            if ($dynamicService && $dynamicService->category === 'training') {
-                $rules['training_service_type'] = 'required|in:individual,group';
-            }
-            
             if ($dynamicService && $dynamicService->form_fields) {
                 $formFields = json_decode($dynamicService->form_fields, true);
                 foreach ($formFields as $field) {

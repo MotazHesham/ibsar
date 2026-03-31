@@ -12,7 +12,7 @@
         $buttons = [
             [
                 'title' => trans('global.add') . ' ' . trans('cruds.beneficiaryOrder.extra.title_singular'),
-                'url' => route('beneficiary.beneficiary-orders.create', ['service_type' => request()->get('service_type')]),
+                'url' => route('beneficiary.beneficiary-orders.create', ['service_type' => 'social']),
                 'icon' => 'ri-add-line',
             ],
         ];
