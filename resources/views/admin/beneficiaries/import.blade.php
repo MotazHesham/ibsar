@@ -30,6 +30,7 @@
                             <li>قم بتعيين أعمدة CSV إلى حقول قاعدة البيانات</li>
                             <li>اختر عمود المعرف الفريد (handle) للتحديثات</li>
                             <li>راجع المعاينة قبل المعالجة</li>
+                            <li>اختر صيغة التاريخ المستخدمة في أعمدة التاريخ داخل ملف CSV</li>
                         </ul>
                     </div>
                 </div>
@@ -64,6 +65,16 @@
                         <h5>الخطوة 2: تعيين أعمدة CSV إلى حقول قاعدة البيانات</h5>
                         <div class="alert alert-warning">
                             <strong>مهم:</strong> اختر عمود المعرف الفريد (handle) الذي سيتم استخدامه لتحديث السجلات الموجودة.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <div class="form-group">
+                            <label for="csv_date_format">صيغة التاريخ في ملف CSV</label>
+                            <select id="csv_date_format" class="form-control" style="max-width: 36rem;"></select>
+                            <small class="form-text text-muted">تُستخدم لقراءة تاريخ الميلاد، تاريخ الحالة الاجتماعية، وتاريخ الإنشاء (إن وُجد في التعيين).</small>
                         </div>
                     </div>
                 </div>
@@ -150,6 +161,11 @@
                             csvData = response.preview_data;
                             databaseColumns = response.database_columns;
                             filePath = response.file_path;
+
+                            fillDateFormatSelect(
+                                response.date_format_options || {},
+                                response.default_date_format || '{{ config('panel.date_format') }}'
+                            );
                             
                             displayPreview(response.headers, response.preview_data);
                             generateColumnMapping(response.headers, response.database_columns);
@@ -212,6 +228,7 @@
                         file_path: filePath,
                         column_mapping: columnMapping,
                         handle_column: handleColumn,
+                        date_format: $('#csv_date_format').val(),
                         _token: '{{ csrf_token() }}'
                     },
                     success: function(response) {
@@ -235,6 +252,31 @@
                     }
                 });
             });
+
+            function fillDateFormatSelect(options, defaultFormat) {
+                let html = '';
+                const keys = Object.keys(options);
+                if (keys.length === 0) {
+                    const fallback = {
+                        'd/m/Y': 'يوم/شهر/سنة (01/05/2026)',
+                        'd-m-Y': 'يوم-شهر-سنة (01-05-2026)',
+                        'Y-m-d': 'سنة-شهر-يوم (2026-05-01)',
+                        'Y/m/d': 'سنة/شهر/يوم (2026/05/01)',
+                        'm/d/Y': 'شهر/يوم/سنة (05/01/2026)'
+                    };
+                    Object.keys(fallback).forEach(function(fmt) {
+                        html += '<option value="' + fmt + '">' + fallback[fmt] + '</option>';
+                    });
+                } else {
+                    keys.forEach(function(fmt) {
+                        html += '<option value="' + fmt + '">' + options[fmt] + '</option>';
+                    });
+                }
+                $('#csv_date_format').html(html);
+                if ($('#csv_date_format option[value="' + defaultFormat + '"]').length) {
+                    $('#csv_date_format').val(defaultFormat);
+                }
+            }
 
             function displayPreview(headers, data) {
                 let headerHtml = '<tr>';

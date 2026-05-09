@@ -16,11 +16,13 @@ use App\Models\City;
 use App\Models\District;
 use App\Models\HealthCondition;
 use App\Models\DisabilityType;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -69,7 +71,9 @@ class BeneficiaryImportController extends Controller
                 'headers' => $headers,
                 'preview_data' => $previewData,
                 'database_columns' => $databaseColumns,
-                'total_rows' => count($csvData)
+                'total_rows' => count($csvData),
+                'date_format_options' => $this->importDateFormatOptions(),
+                'default_date_format' => config('panel.date_format'),
             ]);
 
         } catch (\Exception $e) {
@@ -88,12 +92,14 @@ class BeneficiaryImportController extends Controller
             'file_path' => 'required|string',
             'column_mapping' => 'required|array',
             'handle_column' => 'required|string',
+            'date_format' => ['nullable', Rule::in($this->allowedImportDateFormats())],
         ]);
         
         try {
             $filePath = $request->input('file_path');
             $columnMapping = $request->input('column_mapping');
             $handleColumn = $request->input('handle_column');
+            $csvDateFormat = $request->input('date_format') ?: config('panel.date_format');
 
             if (!Storage::exists($filePath)) {
                 return response()->json([
@@ -103,7 +109,7 @@ class BeneficiaryImportController extends Controller
             }
 
             $csvData = $this->readCsvFile($filePath, false);
-            $results = $this->processCsvData($csvData, $columnMapping, $handleColumn);
+            $results = $this->processCsvData($csvData, $columnMapping, $handleColumn, $csvDateFormat);
 
             // Clean up temp file
             Storage::delete($filePath);
@@ -172,11 +178,35 @@ class BeneficiaryImportController extends Controller
             'postal_code' => trans('cruds.beneficiary.fields.postal_code'),   
             'total_incomes' => trans('cruds.beneficiary.fields.total_incomes'),
             'total_expenses' => trans('cruds.beneficiary.fields.total_expenses'),  
-            'created_at' => trans('cruds.beneficiary.fields.created_at') . ' (Y-m-d)',
+            'created_at' => trans('cruds.beneficiary.fields.created_at') . ' (نفس صيغة التاريخ المختارة للاستيراد)',
         ];
     }
 
-    private function processCsvData($csvData, $columnMapping, $handleColumn)
+    /**
+     * PHP date() patterns accepted for CSV date columns (dob, marital status date, created_at).
+     *
+     * @return list<string>
+     */
+    private function allowedImportDateFormats(): array
+    {
+        return ['d/m/Y', 'd-m-Y', 'Y-m-d', 'Y/m/d', 'm/d/Y'];
+    }
+
+    /**
+     * @return array<string, string> format => label (Arabic)
+     */
+    private function importDateFormatOptions(): array
+    {
+        return [
+            'd/m/Y' => 'يوم/شهر/سنة (01/05/2026) — مطابقة لوحة التحكم',
+            'd-m-Y' => 'يوم-شهر-سنة (01-05-2026)',
+            'Y-m-d' => 'سنة-شهر-يوم (2026-05-01)',
+            'Y/m/d' => 'سنة/شهر/يوم (2026/05/01)',
+            'm/d/Y' => 'شهر/يوم/سنة (05/01/2026)',
+        ];
+    }
+
+    private function processCsvData($csvData, $columnMapping, $handleColumn, string $csvDateFormat)
     {
         $results = [
             'imported' => 0,
@@ -191,6 +221,7 @@ class BeneficiaryImportController extends Controller
             
             try {
                 $mappedData = $this->mapRowData($row, $columnMapping);
+                $this->normalizeImportedDates($mappedData, $csvDateFormat);
                 $handle = $row[$handleColumn] ?? null;
 
                 if (!$handle) {
@@ -252,6 +283,83 @@ class BeneficiaryImportController extends Controller
         }
 
         return $mappedData;
+    }
+
+    /**
+     * Convert date strings from the CSV format into values expected by validation and {@see Beneficiary} mutators.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function normalizeImportedDates(array &$data, string $csvFormat): void
+    {
+        $panelFormat = config('panel.date_format');
+
+        foreach (['dob', 'martial_status_date'] as $field) {
+            if (!array_key_exists($field, $data)) {
+                continue;
+            }
+            $raw = $data[$field];
+            if ($raw === null || $raw === '') {
+                unset($data[$field]);
+                continue;
+            }
+            if (!is_string($raw)) {
+                continue;
+            }
+            $trimmed = trim($raw);
+            if ($trimmed === '') {
+                unset($data[$field]);
+                continue;
+            }
+
+            if ($csvFormat === $panelFormat) {
+                $data[$field] = $trimmed;
+                continue;
+            }
+
+            try {
+                $dt = Carbon::createFromFormat($csvFormat, $trimmed)->startOfDay();
+            } catch (\Throwable $e) {
+                throw new \Exception(
+                    sprintf('Invalid %s "%s" for CSV date format %s', $field, $trimmed, $csvFormat)
+                );
+            }
+            $data[$field] = $dt->format($panelFormat);
+        }
+
+        if (!array_key_exists('created_at', $data)) {
+            return;
+        }
+        $raw = $data['created_at'];
+        if ($raw === null || $raw === '') {
+            unset($data['created_at']);
+            return;
+        }
+        if (!is_string($raw)) {
+            return;
+        }
+        $trimmed = trim($raw);
+        if ($trimmed === '') {
+            unset($data['created_at']);
+            return;
+        }
+
+        if ($csvFormat === 'Y-m-d') {
+            try {
+                Carbon::createFromFormat('Y-m-d', $trimmed)->startOfDay();
+            } catch (\Throwable $e) {
+                throw new \Exception(sprintf('Invalid created_at "%s" for format Y-m-d', $trimmed));
+            }
+            $data['created_at'] = $trimmed;
+            return;
+        }
+
+        try {
+            $dt = Carbon::createFromFormat($csvFormat, $trimmed)->startOfDay();
+        } catch (\Throwable $e) {
+            throw new \Exception(sprintf('Invalid created_at "%s" for CSV date format %s', $trimmed, $csvFormat));
+        }
+        $data['created_at'] = $dt->format('Y-m-d');
     }
 
     private function validateData($data)
