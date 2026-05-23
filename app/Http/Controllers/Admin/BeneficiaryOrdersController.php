@@ -336,7 +336,6 @@ class BeneficiaryOrdersController extends Controller
             'specialist',
             'beneficiaryOrderFollowups.user',
             'dynamicServiceOrder.dynamicService',
-            'dynamicServiceOrder.workflow.transitions.user',
             'donationAllocations.donation.donator',
             'donationAllocations.donation.items',
             'donationAllocations.items.donationItem'

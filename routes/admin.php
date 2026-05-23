@@ -238,7 +238,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     Route::post('dynamic-services/media', 'DynamicServiceController@storeMedia')->name('dynamic-services.storeMedia');
     Route::delete('dynamic-services/destroy', 'DynamicServiceController@massDestroy')->name('dynamic-services.massDestroy');
     Route::put('dynamic-services/{dynamicService}/program-meetings', 'DynamicServiceController@updateProgramMeetings')->name('dynamic-services.update-program-meetings');
-    Route::match(['get', 'post'], 'dynamic-services/meeting-attendance', 'DynamicServiceController@meetingAttendance')->name('dynamic-services.meeting-attendance');
     Route::resource('dynamic-services', 'DynamicServiceController');
 
     // Projects (Donations)
@@ -270,13 +269,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     Route::delete('volunteer-tasks/destroy', 'VolunteerTasksController@massDestroy')->name('volunteer-tasks.massDestroy');
     Route::get('volunteer-tasks/{id}/qr', 'VolunteerTasksController@qr')->name('volunteer-tasks.qr');
     Route::resource('volunteer-tasks', 'VolunteerTasksController');
-
-    // Dynamic Service Workflows
-    Route::get('dynamic-service-workflows/{dynamicServiceOrder}', 'DynamicServiceWorkflowController@show')->name('dynamic-service-workflows.show');
-    Route::post('dynamic-service-workflows/{workflow}/transition', 'DynamicServiceWorkflowController@transition')->name('dynamic-service-workflows.transition');
-    Route::post('dynamic-service-workflows/{workflow}/attendance', 'DynamicServiceWorkflowController@updateAttendance')->name('dynamic-service-workflows.attendance');
-    Route::post('dynamic-service-workflows/{workflow}/accounting', 'DynamicServiceWorkflowController@updateAccounting')->name('dynamic-service-workflows.accounting');
-    Route::post('dynamic-service-workflows/{workflow}/satisfaction', 'DynamicServiceWorkflowController@updateSatisfaction')->name('dynamic-service-workflows.satisfaction');
 
     // Beneficiary Orders
     Route::delete('beneficiary-orders/destroy', 'BeneficiaryOrdersController@massDestroy')->name('beneficiary-orders.massDestroy');

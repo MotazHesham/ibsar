@@ -64,11 +64,6 @@ class DynamicServiceOrder extends Model
         return $this->belongsTo(DynamicService::class, 'dynamic_service_id');
     }
 
-    public function workflow()
-    {
-        return $this->hasOne(DynamicServiceWorkflow::class, 'dynamic_service_order_id');
-    }
-
     /**
      * Get a specific field value by field ID
      */

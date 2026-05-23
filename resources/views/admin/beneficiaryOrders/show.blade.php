@@ -25,19 +25,6 @@
             @include('admin.beneficiaryOrders.partials.donation-allocation')
         </div>
         <div class="col-xxl-6">
-            @if($beneficiaryOrder->dynamicServiceOrder && $beneficiaryOrder->dynamicServiceOrder->dynamicService && in_array($beneficiaryOrder->dynamicServiceOrder->dynamicService->category, ['training', 'assistance', 'social_programs', 'surgical_procedures', 'detection_center']) && $beneficiaryOrder->dynamicServiceOrder->workflow)
-                <div class="mb-2">
-                    <div class="card">
-                        <div class="card-body">
-                            <h6 class="card-title">إدارة سير العمل</h6>
-                            <p class="text-muted">الحالة الحالية: <span class="badge bg-primary">{{ $beneficiaryOrder->dynamicServiceOrder->workflow->status_label }}</span></p>
-                            <a href="{{ route('admin.dynamic-service-workflows.show', $beneficiaryOrder->dynamicServiceOrder) }}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-cog"></i> إدارة سير العمل
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            @endif
             <div class="mb-2">
                 @include('admin.beneficiaryOrders.partials.edit-status')
             </div>

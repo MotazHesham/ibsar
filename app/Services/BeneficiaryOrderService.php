@@ -11,7 +11,6 @@ use App\Models\ServiceLoan;
 use App\Models\ServiceLoanMember;
 use App\Models\Loan;
 use App\Models\DynamicServiceOrder;
-use App\Models\DynamicServiceWorkflow;
 use Carbon\Carbon;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -185,54 +184,11 @@ class BeneficiaryOrderService
             }
             
             // Create dynamic service order record
-            $dynamicServiceOrder = DynamicServiceOrder::create([
+            DynamicServiceOrder::create([
                 'beneficiary_order_id' => $beneficiaryOrder->id,
                 'dynamic_service_id' => $dynamicServiceId,
                 'field_data' => $fieldData,
             ]);
-
-            // Create workflow for training category
-            if ($dynamicService && $dynamicService->category === 'training') {
-                $workflow = DynamicServiceWorkflow::create([
-                    'dynamic_service_order_id' => $dynamicServiceOrder->id,
-                    'category' => 'training',
-                    'current_status' => DynamicServiceWorkflow::STATUS_PENDING_REVIEW,
-                ]);
-                
-                // Create training-specific data
-                \App\Models\DynamicServiceWorkflowTraining::create([
-                    'workflow_id' => $workflow->id,
-                    'service_type' => $dynamicService->service_type, // 'individual' or 'group'
-                ]);
-            }
-            
-            // Create workflow for assistance category
-            if ($dynamicService && $dynamicService->category === 'assistance') {
-                $workflow = DynamicServiceWorkflow::create([
-                    'dynamic_service_order_id' => $dynamicServiceOrder->id,
-                    'category' => 'assistance',
-                    'current_status' => DynamicServiceWorkflow::STATUS_PENDING_REVIEW,
-                ]);
-                
-                // Create assistance-specific data
-                \App\Models\DynamicServiceWorkflowAssistance::create([
-                    'workflow_id' => $workflow->id,
-                ]);
-            }
-            
-            // Create workflow for social_programs category
-            if ($dynamicService && $dynamicService->category === 'social_programs') {
-                $workflow = DynamicServiceWorkflow::create([
-                    'dynamic_service_order_id' => $dynamicServiceOrder->id,
-                    'category' => 'social_programs',
-                    'current_status' => DynamicServiceWorkflow::STATUS_PENDING_REVIEW,
-                ]);
-                
-                // Create social_programs-specific data
-                \App\Models\DynamicServiceWorkflowSocialPrograms::create([
-                    'workflow_id' => $workflow->id,
-                ]);
-            }
         }
 
         if ($request->input('attachment', false)) {
