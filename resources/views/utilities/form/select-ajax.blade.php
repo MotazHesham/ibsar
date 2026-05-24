@@ -5,7 +5,8 @@
             <span class="text-danger">*</span>
         @endif
     </label>
-    <select class="form-select @isset ($search) select2 @endisset {{ $errors->has($name) ? ' is-invalid' : '' }}"
+    <select
+        class="form-select @isset($search) select2 @endisset {{ $errors->has($name) ? ' is-invalid' : '' }}"
         name="{{ $name }}" id="{{ $id ?? $name }}" @if ($isRequired) required @endif>
         @foreach ($options as $rawId => $entry)
             <option value="{{ $rawId }}"
@@ -21,7 +22,7 @@
     @endif
 
 
-    <span class="help-block">{{ trans($label . '_helper') }}</span>
+    <span class="help-block">{{ isset($helperBlock) ? trans($helperBlock) : trans($label . '_helper') }}</span>
 </div>
 
 @isset($search)

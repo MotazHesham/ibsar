@@ -27,8 +27,6 @@
         @endif
         @if (isset($helperBlock))
             <span class="help-block">{{ trans($helperBlock) }}</span>
-        @else
-            <span class="help-block">{{ trans($label . '_helper') }}</span>
         @endif
     </div>
 </div>
@@ -58,7 +56,7 @@
                 }],
                 [{
                     align: []
-                }], 
+                }],
                 ["clean"]
             ];
 

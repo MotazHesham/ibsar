@@ -86,8 +86,8 @@ class TrainingWorkflowService
     protected function validateEvaluationSchedule(array $data): array
     {
         $validated = Validator::make($data, [
-            'evaluation_date' => 'required|date',
-            'evaluation_time' => 'required',
+            'evaluation_date' => 'required|date_format:' . config('panel.date_format'),
+            'evaluation_time' => 'required|date_format:H:i',
             'evaluation_types' => 'required|array|min:1',
             'evaluation_types.*' => 'in:' . implode(',', array_keys(self::EVALUATION_APPOINTMENT_TYPES)),
         ], [
@@ -144,8 +144,8 @@ class TrainingWorkflowService
         if ($action === TrainingWorkflowHandler::ACTION_SCHEDULE_SESSION) {
             return Validator::make($data, [
                 'session_number' => 'required|integer|min:1',
-                'session_date' => 'required|date',
-                'session_time' => 'required',
+                'session_date' => 'required|date_format:' . config('panel.date_format'),
+                'session_time' => 'required|date_format:H:i',
             ])->validate();
         }
 
@@ -307,10 +307,73 @@ class TrainingWorkflowService
 
         $alert = UserAlert::create([
             'alert_text' => $text,
-            'alert_link' => $link,
+            'alert_link' => $link ?? $this->beneficiaryOrderShowUrl($beneficiaryOrder),
             'user_type' => 'beneficiary',
         ]);
 
         $alert->users()->sync([$userId]);
+    }
+
+    public function beneficiaryOrderShowUrl(BeneficiaryOrder $beneficiaryOrder): string
+    {
+        return route('beneficiary.beneficiary-orders.show', $beneficiaryOrder);
+    }
+
+    public function attendanceQrPayload(BeneficiaryOrder $beneficiaryOrder, int $sessionNumber): string
+    {
+        return 'training_attendance:' . $beneficiaryOrder->id . ':' . $sessionNumber;
+    }
+
+    public function submitBeneficiarySatisfaction(
+        BeneficiaryOrder $beneficiaryOrder,
+        DynamicServiceOrder $dynamicServiceOrder,
+        array $data
+    ): void {
+        $validated = Validator::make($data, [
+            'satisfaction_rating' => 'required|integer|min:1|max:5',
+            'satisfaction_comment' => 'nullable|string|max:2000',
+        ], [
+            'satisfaction_rating.required' => 'يرجى اختيار تقييم الرضا',
+        ])->validate();
+
+        $workflowData = $dynamicServiceOrder->workflow_data ?? [];
+        $test = $workflowData['test'] ?? [];
+
+        if (empty($test['passed'])) {
+            throw ValidationException::withMessages([
+                'satisfaction' => 'لا يمكن إكمال استبيان الرضا قبل اجتياز الاختبار.',
+            ]);
+        }
+
+        if (! empty($test['satisfaction_completed'])) {
+            throw ValidationException::withMessages([
+                'satisfaction' => 'تم إكمال استبيان الرضا مسبقاً.',
+            ]);
+        }
+
+        $workflowData['test'] = array_merge($test, [
+            'satisfaction_completed' => true,
+            'satisfaction_rating' => (int) $validated['satisfaction_rating'],
+            'satisfaction_comment' => $validated['satisfaction_comment'] ?? null,
+            'satisfaction_completed_at' => now()->toDateTimeString(),
+        ]);
+
+        $history = $workflowData['history'] ?? [];
+        $history[] = [
+            'step' => TrainingWorkflowHandler::STEP_TESTING,
+            'action' => 'beneficiary_satisfaction',
+            'at' => now()->toDateTimeString(),
+            'by' => auth()->id(),
+            'rating' => (int) $validated['satisfaction_rating'],
+            'comment' => $validated['satisfaction_comment'] ?? null,
+        ];
+        $workflowData['history'] = $history;
+
+        $dynamicServiceOrder->update(['workflow_data' => $workflowData]);
+
+        $this->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'شكراً لإكمال استبيان الرضا. سيتم متابعة إصدار الشهادة أو تسليم الجهاز حسب حالة طلبكم.'
+        );
     }
 }

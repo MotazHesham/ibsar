@@ -24,26 +24,44 @@
         </div>
         <div class="col-md-6">
             <div class="mb-4">
-                @include('beneficiary.orders.partials.status')
+                @include('beneficiary.orders.partials.status', [
+                    'workflowContext' => $workflowContext ?? null,
+                ])
             </div>
 
-            @if ($dynamicService && $dynamicService->category == 'training')
-                <div class="card custom-card mt-4">
-                    <div class="card-header">
-                        <div class="card-title">
-                            {{ trans('cruds.beneficiaryOrder.extra.attendance') }}
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="text-center">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $beneficiaryOrder->beneficiary_id }}"
-                                alt="">
-                            <p class="text-muted mt-3 mb-0">
-                                {{ trans('cruds.beneficiaryOrder.extra.scan_qr_attendance') }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
+            @if (!empty($workflowContext) && ($dynamicService->category ?? null) === 'training')
+                @include('dynamicservices::workflows.training.beneficiary-progress', [
+                    'beneficiaryOrder' => $beneficiaryOrder,
+                    'workflowContext' => $workflowContext,
+                ])
+            @endif
+
+            @if (!empty($workflowContext) && ($dynamicService->category ?? null) === 'assistance')
+                @include('dynamicservices::workflows.assistance.beneficiary-progress', [
+                    'beneficiaryOrder' => $beneficiaryOrder,
+                    'workflowContext' => $workflowContext,
+                ])
+            @endif
+
+            @if (!empty($workflowContext) && ($dynamicService->category ?? null) === 'social_programs')
+                @include('dynamicservices::workflows.social-programs.beneficiary-progress', [
+                    'beneficiaryOrder' => $beneficiaryOrder,
+                    'workflowContext' => $workflowContext,
+                ])
+            @endif
+
+            @if (!empty($workflowContext) && ($dynamicService->category ?? null) === 'surgical_procedures')
+                @include('dynamicservices::workflows.surgical-procedures.beneficiary-progress', [
+                    'beneficiaryOrder' => $beneficiaryOrder,
+                    'workflowContext' => $workflowContext,
+                ])
+            @endif
+
+            @if (!empty($workflowContext) && ($dynamicService->category ?? null) === 'detection_center')
+                @include('dynamicservices::workflows.detection-center.beneficiary-progress', [
+                    'beneficiaryOrder' => $beneficiaryOrder,
+                    'workflowContext' => $workflowContext,
+                ])
             @endif
             <div class="card custom-card justify-content-between">
                 <div class="card-header">

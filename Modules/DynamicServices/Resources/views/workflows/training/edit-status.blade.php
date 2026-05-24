@@ -7,6 +7,22 @@
         $categoryLabel =
             \Modules\DynamicServices\Models\DynamicService::CATEGORIES[$service->category] ?? $service->category;
         $isGroup = $service->service_type === 'group';
+
+        $trainers = $workflowContext['trainers'] ?? collect();
+        $visualStatusOptions = $workflowContext['visualStatusOptions'] ?? [];
+        $evaluationAppointmentTypes = $workflowContext['evaluationAppointmentTypes'] ?? [];
+        $testCriteria = $workflowContext['testCriteria'] ?? [];
+        $passThreshold = $workflowContext['passThreshold'] ?? 70;
+        $beneficiaryDob = $workflowContext['beneficiaryDob'] ?? null;
+        $evaluation = $workflowContext['evaluation'] ?? [];
+        $evaluationAppointment = $workflowContext['evaluationAppointment'] ?? [];
+        $financial = $workflowContext['financial'] ?? [];
+        $sessions = $workflowContext['sessions'] ?? [];
+        $sessionsCount = $workflowContext['sessionsCount'] ?? 0;
+        $groupSchedule = $workflowContext['groupSchedule'] ?? [];
+        $testResult = $workflowContext['testResult'] ?? [];
+        $hasDonationAllocation = $workflowContext['hasDonationAllocation'] ?? false;
+        $programMeetings = $workflowContext['programMeetings'] ?? [];
     @endphp
 
     <div class="alert alert-info py-2 mb-3">
@@ -92,6 +108,7 @@
 
     @include('dynamicservices::workflows.training.partials.history', [
         'dynamicServiceOrder' => $dynamicServiceOrder,
+        'workflowContext' => $workflowContext,
     ])
 @endif
 

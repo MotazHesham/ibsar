@@ -272,26 +272,45 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
 
             $step === self::STEP_EVALUATION && $action === self::ACTION_SUBMIT_EVALUATION => $this->handleEvaluationSubmit($beneficiaryOrder, $dynamicServiceOrder, $data),
 
-            $step === self::STEP_FINANCIAL_APPROVAL && $action === self::ACTION_APPROVE_FINANCIAL => $this->approveAndMove($beneficiaryOrder, $dynamicServiceOrder, self::STEP_DONATION_ALLOCATION, 4),
+            $step === self::STEP_FINANCIAL_APPROVAL && $action === self::ACTION_APPROVE_FINANCIAL => $this->handleFinancialApproval($beneficiaryOrder, $dynamicServiceOrder, $data),
 
-            $step === self::STEP_FINANCIAL_APPROVAL && $action === self::ACTION_REJECT_FINANCIAL => $this->handleFinancialRejection($dynamicServiceOrder, $data),
+            $step === self::STEP_FINANCIAL_APPROVAL && $action === self::ACTION_REJECT_FINANCIAL => $this->handleFinancialRejection($beneficiaryOrder, $dynamicServiceOrder, $data),
 
             $step === self::STEP_DONATION_ALLOCATION && $action === self::ACTION_CONFIRM_DONATION => $this->handleDonationConfirmed($beneficiaryOrder, $dynamicServiceOrder),
 
             $step === self::STEP_SESSION_SCHEDULING && $action === self::ACTION_SCHEDULE_SESSION => $this->handleScheduleSession($beneficiaryOrder, $dynamicServiceOrder, $data),
 
-            $step === self::STEP_SESSION_SCHEDULING && $action === self::ACTION_MARK_SESSION_ATTENDED => $this->handleSessionAttendance($dynamicServiceOrder, $data),
+            $step === self::STEP_SESSION_SCHEDULING && $action === self::ACTION_MARK_SESSION_ATTENDED => $this->handleSessionAttendance($beneficiaryOrder, $dynamicServiceOrder, $data),
 
-            $step === self::STEP_SESSION_SCHEDULING && $action === self::ACTION_ADVANCE => $this->moveToStep($dynamicServiceOrder, self::STEP_TESTING),
+            $step === self::STEP_SESSION_SCHEDULING && $action === self::ACTION_ADVANCE => $this->handleAdvanceToTesting($beneficiaryOrder, $dynamicServiceOrder),
 
             $step === self::STEP_TESTING && $action === self::ACTION_SUBMIT_TEST => $this->handleTestSubmit($beneficiaryOrder, $dynamicServiceOrder, $data),
 
             $step === self::STEP_TESTING && $action === self::ACTION_COMPLETE_SATISFACTION => $this->handleSatisfactionComplete($dynamicServiceOrder, $data),
 
-            $step === self::STEP_TESTING && $action === self::ACTION_COMPLETE => $this->complete($beneficiaryOrder, $dynamicServiceOrder),
+            $step === self::STEP_TESTING && $action === self::ACTION_COMPLETE => $this->handleOrderComplete($beneficiaryOrder, $dynamicServiceOrder),
 
             default => null,
         };
+    }
+
+    protected function handleAdvanceToTesting(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
+    {
+        $this->moveToStep($dynamicServiceOrder, self::STEP_TESTING);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_TESTING, self::ACTION_ADVANCE);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم تحديد مرحلة الاختبار. يرجى مراجعة موعد الاختبار وباركود الحضور من صفحة الطلب.'
+        );
+    }
+
+    protected function handleOrderComplete(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
+    {
+        $this->complete($beneficiaryOrder, $dynamicServiceOrder);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم إنهاء طلب التدريب بنجاح. يمكنكم مراجعة تفاصيل الطلب من صفحته.'
+        );
     }
 
     protected function processGroupAction(
@@ -309,13 +328,13 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
 
             $step === self::STEP_START_PROGRAM && $action === self::ACTION_MARK_PROGRAM_ATTENDANCE => $this->appendHistory($dynamicServiceOrder, $step, $action),
 
-            $step === self::STEP_START_PROGRAM && $action === self::ACTION_ADVANCE => $this->moveToStep($dynamicServiceOrder, self::STEP_TESTING),
+            $step === self::STEP_START_PROGRAM && $action === self::ACTION_ADVANCE => $this->handleAdvanceToTesting($beneficiaryOrder, $dynamicServiceOrder),
 
             $step === self::STEP_TESTING && $action === self::ACTION_SUBMIT_TEST => $this->handleTestSubmit($beneficiaryOrder, $dynamicServiceOrder, $data),
 
             $step === self::STEP_TESTING && $action === self::ACTION_COMPLETE_SATISFACTION => $this->handleSatisfactionComplete($dynamicServiceOrder, $data),
 
-            $step === self::STEP_TESTING && $action === self::ACTION_COMPLETE => $this->complete($beneficiaryOrder, $dynamicServiceOrder),
+            $step === self::STEP_TESTING && $action === self::ACTION_COMPLETE => $this->handleOrderComplete($beneficiaryOrder, $dynamicServiceOrder),
 
             default => null,
         };
@@ -324,6 +343,10 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
     protected function handleInitialApproval(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
     {
         $this->approveAndMove($beneficiaryOrder, $dynamicServiceOrder, self::STEP_EVALUATION_SCHEDULING, 1);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم قبول طلبكم. سيتم تحديد موعد التقييم (الاستقبال، البحث الاجتماعي، التدريب) وإشعاركم به.'
+        );
     }
 
     protected function handleEvaluationSchedule(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
@@ -332,11 +355,16 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
         $this->moveToStep($dynamicServiceOrder, self::STEP_ATTENDANCE, 1);
 
         $appointment = $data['evaluation_appointment'] ?? [];
+        $types = collect($appointment['types'] ?? [])->map(
+            fn ($type) => TrainingWorkflowService::EVALUATION_APPOINTMENT_TYPES[$type] ?? $type
+        )->implode('، ');
+
         $this->trainingService->notifyBeneficiaryUserAlert(
             $beneficiaryOrder,
-            'تم تحديد موعد التقييم بتاريخ ' . ($appointment['date'] ?? '') . ' الساعة ' . ($appointment['time'] ?? '')
+            'تم تحديد موعد التقييم بتاريخ ' . ($appointment['date'] ?? '') . ' الساعة ' . ($appointment['time'] ?? '') .
+                ($types ? ' — أنواع التقييم: ' . $types : '')
         );
-        $this->appendHistory($dynamicServiceOrder, self::STEP_ATTENDANCE, self::ACTION_SUBMIT_EVALUATION_SCHEDULE, $appointment);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_EVALUATION_SCHEDULING, self::ACTION_SUBMIT_EVALUATION_SCHEDULE, $appointment);
     }
 
     protected function handleNotAttended(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
@@ -344,6 +372,10 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
         $this->setWorkflowMeta($dynamicServiceOrder, 'attendance', 'not_attended');
         $this->appendHistory($dynamicServiceOrder, self::STEP_ATTENDANCE, self::ACTION_MARK_NOT_ATTENDED);
         $this->moveToStep($dynamicServiceOrder, self::STEP_EVALUATION_SCHEDULING, 1);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'لم يتم تسجيل حضوركم لموعد التقييم. سيتم التواصل معكم لإعادة جدولة الموعد.'
+        );
     }
 
     protected function handleEvaluationSubmit(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
@@ -368,7 +400,7 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
         $this->appendHistory($dynamicServiceOrder, self::STEP_FINANCIAL_APPROVAL, self::ACTION_SUBMIT_EVALUATION, $evaluation);
     }
 
-    protected function handleFinancialRejection(DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    protected function handleFinancialRejection(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
     {
         $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
             'financial' => [
@@ -377,7 +409,39 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
                 'note' => $data['note'] ?? null,
             ],
         ]);
-        $this->appendHistory($dynamicServiceOrder, self::STEP_FINANCIAL_APPROVAL, self::ACTION_REJECT_FINANCIAL);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_FINANCIAL_APPROVAL, self::ACTION_REJECT_FINANCIAL, [
+            'approved' => false,
+            'note' => $data['note'] ?? null,
+        ]);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'لم يتم اعتماد المساهمة المالية. يرجى التواصل مع الاستقبال لإتمام السداد.'
+        );
+    }
+
+    protected function handleFinancialApproval(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    {
+        $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+            'financial' => [
+                'approved' => true,
+                'approved_at' => now()->toDateTimeString(),
+                'note' => $data['note'] ?? null,
+            ],
+        ]);
+
+        if ($dynamicServiceOrder->approval_stage === 0) {
+            $beneficiaryOrder->update(['accept_status' => 'yes']);
+        }
+
+        $this->moveToStep($dynamicServiceOrder, self::STEP_DONATION_ALLOCATION, 4);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_FINANCIAL_APPROVAL, self::ACTION_APPROVE_FINANCIAL, [
+            'approved' => true,
+            'note' => $data['note'] ?? null,
+        ]);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم اعتماد المساهمة المالية. سيتم تخصيص التبرع وجدولة الجلسات التدريبية.'
+        );
     }
 
     protected function handleMarkAttended(DynamicServiceOrder $dynamicServiceOrder): void
@@ -396,7 +460,11 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
         }
 
         $this->moveToStep($dynamicServiceOrder, self::STEP_SESSION_SCHEDULING, 5);
-        $this->appendHistory($dynamicServiceOrder, self::STEP_SESSION_SCHEDULING, self::ACTION_CONFIRM_DONATION);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_DONATION_ALLOCATION, self::ACTION_CONFIRM_DONATION);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم تخصيص التبرع لطلبكم. سيتم تحديد مواعيد الجلسات التدريبية وإشعاركم بها.'
+        );
     }
 
     protected function handleScheduleSession(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
@@ -410,15 +478,24 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
 
         $this->trainingService->notifyBeneficiaryUserAlert(
             $beneficiaryOrder,
-            'تم تحديد موعد الجلسة رقم ' . $data['session_number'] . ' بتاريخ ' . $data['session_date']
+            'تم تحديد موعد الجلسة رقم ' . $data['session_number'] . ' بتاريخ ' . $data['session_date'] .
+                (! empty($data['session_time']) ? ' الساعة ' . $data['session_time'] : '') .
+                '. يمكنكم عرض باركود الحضور من صفحة الطلب.'
         );
         $this->appendHistory($dynamicServiceOrder, self::STEP_SESSION_SCHEDULING, self::ACTION_SCHEDULE_SESSION, $data);
     }
 
-    protected function handleSessionAttendance(DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    protected function handleSessionAttendance(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
     {
         $this->trainingService->markSessionAttended($dynamicServiceOrder, (int) $data['session_number']);
         $this->appendHistory($dynamicServiceOrder, self::STEP_SESSION_SCHEDULING, self::ACTION_MARK_SESSION_ATTENDED, $data);
+
+        if ($this->trainingService->allSessionsAttended($dynamicServiceOrder->fresh())) {
+            $this->trainingService->notifyBeneficiaryUserAlert(
+                $beneficiaryOrder,
+                'تم إكمال جميع الجلسات التدريبية. سيتم تحديد موعد الاختبار وإشعاركم به.'
+            );
+        }
     }
 
     protected function handleTestSubmit(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void

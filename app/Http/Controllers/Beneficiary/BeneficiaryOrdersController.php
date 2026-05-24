@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\Beneficiary;
 
 use Modules\DynamicServices\Helpers\DynamicServiceHelper;
+use Modules\DynamicServices\Services\DynamicOrderWorkflowService;
+use Modules\DynamicServices\Services\TrainingWorkflowService;
+use Modules\DynamicServices\Services\AssistanceWorkflowService;
+use Modules\DynamicServices\Services\SurgicalProceduresWorkflowService;
+use Modules\DynamicServices\Services\DetectionCenterWorkflowService;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\MediaUploadingTrait;
 use App\Http\Requests\Beneficiary\StoreBeneficiaryOrderRequest;
@@ -24,6 +29,7 @@ use App\Models\Service;
 use App\Models\ServiceStatus;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -31,10 +37,26 @@ class BeneficiaryOrdersController extends Controller
 {
     use MediaUploadingTrait;
     protected $beneficiaryOrderService;
+    protected DynamicOrderWorkflowService $dynamicOrderWorkflowService;
+    protected TrainingWorkflowService $trainingWorkflowService;
+    protected AssistanceWorkflowService $assistanceWorkflowService;
+    protected SurgicalProceduresWorkflowService $surgicalWorkflowService;
+    protected DetectionCenterWorkflowService $detectionWorkflowService;
 
-    public function __construct(BeneficiaryOrderService $beneficiaryOrderService)
-    {
+    public function __construct(
+        BeneficiaryOrderService $beneficiaryOrderService,
+        DynamicOrderWorkflowService $dynamicOrderWorkflowService,
+        TrainingWorkflowService $trainingWorkflowService,
+        AssistanceWorkflowService $assistanceWorkflowService,
+        SurgicalProceduresWorkflowService $surgicalWorkflowService,
+        DetectionCenterWorkflowService $detectionWorkflowService
+    ) {
         $this->beneficiaryOrderService = $beneficiaryOrderService;
+        $this->dynamicOrderWorkflowService = $dynamicOrderWorkflowService;
+        $this->trainingWorkflowService = $trainingWorkflowService;
+        $this->assistanceWorkflowService = $assistanceWorkflowService;
+        $this->surgicalWorkflowService = $surgicalWorkflowService;
+        $this->detectionWorkflowService = $detectionWorkflowService;
     }
 
     public function index(Request $request)
@@ -225,13 +247,198 @@ class BeneficiaryOrdersController extends Controller
         }
 
         $dynamicService = null;
+        $workflowContext = null;
+
         if (str_starts_with($beneficiaryOrder->service_type, 'dynamic_')) {
             $dynamicServiceId = str_replace('dynamic_', '', $beneficiaryOrder->service_type);
-            $dynamicService = DynamicService::find($dynamicServiceId); 
+            $dynamicService = DynamicService::find($dynamicServiceId);
+            $beneficiaryOrder->load('dynamicServiceOrder.dynamicService');
+
+            if (DynamicServiceHelper::isDynamicService($beneficiaryOrder->service_type)) {
+                $dynamicServiceOrder = $beneficiaryOrder->dynamicServiceOrder;
+                if ($dynamicServiceOrder) {
+                    $this->dynamicOrderWorkflowService->backfillMissingWorkflow($dynamicServiceOrder);
+                }
+                $workflowContext = $this->dynamicOrderWorkflowService->getWorkflowContext($beneficiaryOrder);
+            }
         }
 
         $beneficiaryOrder->load('beneficiary', 'service', 'status', 'specialist', 'beneficiaryOrderFollowups.user');
-        return view('beneficiary.orders.show', compact('beneficiaryOrder', 'dynamicService'));
+
+        return view('beneficiary.orders.show', compact('beneficiaryOrder', 'dynamicService', 'workflowContext'));
+    }
+
+    public function submitTrainingSatisfaction(Request $request, BeneficiaryOrder $beneficiaryOrder)
+    {
+        $beneficiary = auth()->user()->beneficiary;
+        if ($beneficiaryOrder->beneficiary_id != $beneficiary->id) {
+            abort(403);
+        }
+
+        $dynamicServiceOrder = $beneficiaryOrder->dynamicServiceOrder;
+        if (! $dynamicServiceOrder) {
+            abort(404);
+        }
+
+        try {
+            $this->trainingWorkflowService->submitBeneficiarySatisfaction(
+                $beneficiaryOrder,
+                $dynamicServiceOrder,
+                $request->all()
+            );
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('beneficiary.beneficiary-orders.show', $beneficiaryOrder)
+                ->withErrors($e->errors());
+        }
+
+        return redirect()
+            ->route('beneficiary.beneficiary-orders.show', $beneficiaryOrder)
+            ->with('message', 'تم إرسال استبيان الرضا بنجاح.');
+    }
+
+    public function submitAssistancePickup(Request $request, BeneficiaryOrder $beneficiaryOrder)
+    {
+        $this->authorizeBeneficiaryOrder($beneficiaryOrder);
+        $dynamicServiceOrder = $beneficiaryOrder->dynamicServiceOrder;
+        abort_unless($dynamicServiceOrder, 404);
+
+        try {
+            $this->assistanceWorkflowService->submitBeneficiaryPickupSchedule(
+                $beneficiaryOrder,
+                $dynamicServiceOrder,
+                $request->all()
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('message', 'تم تأكيد موعد الاستلام.');
+    }
+
+    public function submitAssistanceCompleteDocs(Request $request, BeneficiaryOrder $beneficiaryOrder)
+    {
+        $this->authorizeBeneficiaryOrder($beneficiaryOrder);
+        $dynamicServiceOrder = $beneficiaryOrder->dynamicServiceOrder;
+        abort_unless($dynamicServiceOrder, 404);
+
+        try {
+            $this->assistanceWorkflowService->submitBeneficiaryIncompleteDocs(
+                $beneficiaryOrder,
+                $dynamicServiceOrder,
+                $request->all()
+            );
+            $workflowData = $dynamicServiceOrder->fresh()->workflow_data ?? [];
+            unset($workflowData['status']);
+            $dynamicServiceOrder->update(['workflow_data' => $workflowData]);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('message', 'تم إرسال التحديثات للباحث الاجتماعي.');
+    }
+
+    public function submitAssistanceSatisfaction(Request $request, BeneficiaryOrder $beneficiaryOrder)
+    {
+        $this->authorizeBeneficiaryOrder($beneficiaryOrder);
+        $dynamicServiceOrder = $beneficiaryOrder->dynamicServiceOrder;
+        abort_unless($dynamicServiceOrder, 404);
+
+        try {
+            $this->assistanceWorkflowService->submitBeneficiarySatisfaction(
+                $beneficiaryOrder,
+                $dynamicServiceOrder,
+                $request->all()
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('message', 'تم إرسال استبيان الرضا بنجاح.');
+    }
+
+    public function submitSurgicalReceipt(Request $request, BeneficiaryOrder $beneficiaryOrder)
+    {
+        $this->authorizeBeneficiaryOrder($beneficiaryOrder);
+        $dynamicServiceOrder = $beneficiaryOrder->dynamicServiceOrder;
+        abort_unless($dynamicServiceOrder, 404);
+
+        try {
+            $this->surgicalWorkflowService->submitBeneficiaryReceipt(
+                $beneficiaryOrder,
+                $dynamicServiceOrder,
+                $request->all()
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('message', 'تم إرسال إيصال السداد.');
+    }
+
+    public function submitDetectionPickup(Request $request, BeneficiaryOrder $beneficiaryOrder)
+    {
+        $this->authorizeBeneficiaryOrder($beneficiaryOrder);
+        $dynamicServiceOrder = $beneficiaryOrder->dynamicServiceOrder;
+        abort_unless($dynamicServiceOrder, 404);
+
+        try {
+            $this->detectionWorkflowService->submitBeneficiaryPickupSchedule(
+                $beneficiaryOrder,
+                $dynamicServiceOrder,
+                $request->all()
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('message', 'تم تأكيد موعد الاستلام.');
+    }
+
+    public function submitDetectionReceipt(Request $request, BeneficiaryOrder $beneficiaryOrder)
+    {
+        $this->authorizeBeneficiaryOrder($beneficiaryOrder);
+        $dynamicServiceOrder = $beneficiaryOrder->dynamicServiceOrder;
+        abort_unless($dynamicServiceOrder, 404);
+
+        try {
+            $this->detectionWorkflowService->submitBeneficiaryReceipt(
+                $beneficiaryOrder,
+                $dynamicServiceOrder,
+                $request->all()
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('message', 'تم إرسال إيصال السداد.');
+    }
+
+    public function submitDetectionSatisfaction(Request $request, BeneficiaryOrder $beneficiaryOrder)
+    {
+        $this->authorizeBeneficiaryOrder($beneficiaryOrder);
+        $dynamicServiceOrder = $beneficiaryOrder->dynamicServiceOrder;
+        abort_unless($dynamicServiceOrder, 404);
+
+        try {
+            $this->detectionWorkflowService->submitBeneficiarySatisfaction(
+                $beneficiaryOrder,
+                $dynamicServiceOrder,
+                $request->all()
+            );
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('message', 'تم إرسال استبيان الرضا بنجاح.');
+    }
+
+    protected function authorizeBeneficiaryOrder(BeneficiaryOrder $beneficiaryOrder): void
+    {
+        $beneficiary = auth()->user()->beneficiary;
+        if ($beneficiaryOrder->beneficiary_id != $beneficiary->id) {
+            abort(403);
+        }
     }
 
     public function destroy(BeneficiaryOrder $beneficiaryOrder)

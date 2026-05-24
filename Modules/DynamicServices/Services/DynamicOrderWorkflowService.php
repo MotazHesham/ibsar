@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\DB;
 use Modules\DynamicServices\Models\DynamicService;
 use Modules\DynamicServices\Models\DynamicServiceOrder;
 use Modules\DynamicServices\Services\TrainingWorkflowService;
+use Modules\DynamicServices\Services\AssistanceWorkflowService;
+use Modules\DynamicServices\Services\SocialProgramsWorkflowService;
+use Modules\DynamicServices\Services\SurgicalProceduresWorkflowService;
+use Modules\DynamicServices\Services\DetectionCenterWorkflowService;
 use Modules\DynamicServices\Workflows\Contracts\WorkflowHandlerInterface;
 use Modules\DynamicServices\Workflows\WorkflowResolver;
 
@@ -67,6 +71,34 @@ class DynamicOrderWorkflowService
             $context = array_merge(
                 $context,
                 app(TrainingWorkflowService::class)->getViewData($beneficiaryOrder, $dynamicServiceOrder, $service)
+            );
+        }
+
+        if ($service->category === DynamicService::CATEGORY_ASSISTANCE) {
+            $context = array_merge(
+                $context,
+                app(AssistanceWorkflowService::class)->getViewData($beneficiaryOrder, $dynamicServiceOrder, $service)
+            );
+        }
+
+        if ($service->category === DynamicService::CATEGORY_SOCIAL_PROGRAMS) {
+            $context = array_merge(
+                $context,
+                app(SocialProgramsWorkflowService::class)->getViewData($beneficiaryOrder, $dynamicServiceOrder, $service)
+            );
+        }
+
+        if ($service->category === DynamicService::CATEGORY_SURGICAL_PROCEDURES) {
+            $context = array_merge(
+                $context,
+                app(SurgicalProceduresWorkflowService::class)->getViewData($beneficiaryOrder, $dynamicServiceOrder, $service)
+            );
+        }
+
+        if ($service->category === DynamicService::CATEGORY_DETECTION_CENTER) {
+            $context = array_merge(
+                $context,
+                app(DetectionCenterWorkflowService::class)->getViewData($beneficiaryOrder, $dynamicServiceOrder, $service)
             );
         }
 

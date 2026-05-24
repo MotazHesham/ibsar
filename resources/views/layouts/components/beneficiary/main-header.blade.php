@@ -131,12 +131,11 @@
                     </div>
                     <div class="dropdown-divider"></div>
                     <ul class="list-unstyled mb-0" id="header-notification-scroll">
-                        
                     </ul>
 
                     <div class="p-3 empty-header-item1 border-top">
                         <div class="d-grid">
-                            <a href="javascript:void(0);" class="btn btn-primary btn-wave">View All</a>
+                            <a href="{{ route('beneficiary.user-alerts.index') }}" class="btn btn-primary btn-wave">عرض الكل</a>
                         </div>
                     </div>
                     <div class="p-5 empty-item1 d-none">
@@ -216,3 +215,46 @@
     <!-- End::main-header-container -->
 
 </header>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var list = document.getElementById('header-notification-scroll');
+        var badge = document.getElementById('notifiation-data');
+        var emptyState = document.querySelector('.empty-item1');
+
+        if (!list) {
+            return;
+        }
+
+        fetch('{{ route('beneficiary.user-alerts.index') }}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (badge) {
+                    badge.textContent = data.count || 0;
+                }
+
+                if (!data.items || data.items.length === 0) {
+                    if (emptyState) {
+                        emptyState.classList.remove('d-none');
+                    }
+                    return;
+                }
+
+                data.items.forEach(function(item) {
+                    var li = document.createElement('li');
+                    li.className = 'dropdown-item border-bottom';
+                    li.innerHTML = '<div class="d-flex align-items-start gap-2 py-2">' +
+                        '<div class="flex-fill">' +
+                        '<p class="mb-1 fs-13">' + item.text + '</p>' +
+                        '<span class="text-muted fs-11">' + (item.at || '') + '</span>' +
+                        '</div>' +
+                        (item.link ? '<a href="' + item.link + '" class="btn btn-sm btn-light">عرض</a>' : '') +
+                        '</div>';
+                    list.appendChild(li);
+                });
+            })
+            .catch(function() {});
+    });
+</script>

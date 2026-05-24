@@ -37,29 +37,43 @@
         @endif
 
         <div class="row">
-            <input type="hidden" name="session_number" id="session_number_input" value="1">
-            @include('utilities.form.text', [
-                'name' => 'session_number_picker',
+            @php
+                $sessionOptions = !empty($sessions)
+                    ? collect($sessions)->mapWithKeys(fn ($session) => [
+                        $session['number'] => 'الجلسة ' . $session['number'],
+                    ])->all()
+                    : collect(range(1, max(1, (int) $sessionsCount)))->mapWithKeys(fn ($number) => [
+                        $number => 'الجلسة ' . $number,
+                    ])->all();
+            @endphp
+            @include('utilities.form.select', [
+                'id' => 'session_number_input',
+                'name' => 'session_number',
                 'label' => 'رقم الجلسة',
-                'isRequired' => false,
+                'isRequired' => true,
                 'grid' => 'col-md-4',
-                'value' => 1,
-                'attributes' => 'type="number" min="1" onchange="document.getElementById(\'session_number_input\').value=this.value"',
+                'options' => $sessionOptions,
+                'value' => array_key_first($sessionOptions),
+                'helperBlock' => '',
             ])
             @include('utilities.form.date', [
+                'id' => 'session_date',
                 'name' => 'session_date',
                 'label' => 'تاريخ الجلسة',
                 'isRequired' => false,
                 'grid' => 'col-md-4',
+                'helperBlock' => '',
             ])
-            @include('utilities.form.text', [
+            @include('utilities.form.time', [
+                'id' => 'session_time',
                 'name' => 'session_time',
                 'label' => 'وقت الجلسة',
                 'isRequired' => false,
                 'grid' => 'col-md-4',
-                'attributes' => 'type="time"',
+                'helperBlock' => '',
             ])
         </div>
-        <p class="text-muted small mb-0 mt-2">يُرسَل الموعد للمستفيد ويظهر الباركود في صفحته. عند قص الباركود سجّل الحضور.</p>
+        <p class="text-muted small mb-0 mt-2">يُرسَل الموعد للمستفيد ويظهر الباركود في صفحته. عند قص الباركود سجّل
+            الحضور.</p>
     </div>
 </div>

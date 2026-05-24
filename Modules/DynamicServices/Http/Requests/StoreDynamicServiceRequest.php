@@ -37,6 +37,10 @@ class StoreDynamicServiceRequest extends FormRequest
                 'required',
                 'in:training,assistance,social_programs',
             ],
+            'service_type' => [
+                'nullable',
+                'in:individual,group,in_kind,financial',
+            ],
             'icon' => [
                 'nullable',
                 'string',

@@ -35,6 +35,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Yajra\DataTables\Facades\DataTables;
@@ -99,6 +100,8 @@ class BeneficiaryOrdersController extends Controller
         } catch (ValidationException $e) {
             return redirect()->route('admin.beneficiary-orders.show', $beneficiaryOrder)->withErrors($e->errors());
         } catch (\Throwable $th) {
+
+            toast()->error('Error', 'cant update beneficiary order status: ' . $th->getMessage());
             Log::error('Error updating beneficiary order status: ' . $th->getMessage());
             DB::rollBack();
         }

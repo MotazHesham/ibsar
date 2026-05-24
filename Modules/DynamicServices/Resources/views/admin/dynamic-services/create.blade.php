@@ -63,14 +63,16 @@
                                 'options' => [
                                     'training' => 'التدريب والتأهيل',
                                     'assistance' => 'مساعدات',
-                                    'social_programs' => 'برامج اجتماعية', 
+                                    'social_programs' => 'برامج اجتماعية',
+                                    'surgical_procedures' => 'الإجراءات الجراحية',
+                                    'detection_center' => 'مركز الكشف',
                                 ],
-                                'attributes' => 'onchange=toggleTrainingServiceType()',
+                                'attributes' => 'onchange=toggleCategoryServiceType()',
                             ])
                             <div class="col-md-6 mb-3" id="training-service-type-container" style="display: none;">
                                 @include('utilities.form.radio', [
                                     'name' => 'service_type',
-                                    'label' => 'نوع الخدمة',
+                                    'label' => 'نوع التدريب',
                                     'isRequired' => false,
                                     'grid' => 'col-md-12',
                                     'options' => [
@@ -78,7 +80,29 @@
                                         'group' => 'جماعي',
                                     ],
                                     'value' => old('service_type', 'individual'),
-                                    'helperBlock' => 'يرجى اختيار نوع الخدمة',
+                                ])
+                            </div>
+                            <div class="col-md-6 mb-3" id="assistance-service-type-container" style="display: none;">
+                                @include('utilities.form.radio', [
+                                    'name' => 'service_type',
+                                    'label' => 'نوع المساعدة',
+                                    'isRequired' => true,
+                                    'grid' => 'col-md-12',
+                                    'options' => [
+                                        'in_kind' => 'استلام عيني',
+                                        'financial' => 'مساعدة مالية',
+                                    ],
+                                    'value' => old('service_type', 'in_kind'),
+                                ])
+                            </div>
+                            <div class="col-md-6 mb-3" id="social-programs-target-container" style="display: none;">
+                                @include('utilities.form.text', [
+                                    'name' => 'service_type',
+                                    'label' => 'العدد المستهدف للبرنامج',
+                                    'isRequired' => true,
+                                    'grid' => 'col-md-12',
+                                    'value' => old('service_type', ''),
+                                    'attributes' => 'type="number" min="1"',
                                 ])
                             </div>
                             @include('utilities.form.dropzone', [
@@ -227,25 +251,33 @@
             document.querySelector('input[name="slug"]').value = slug;
         }
 
-        function toggleTrainingServiceType() {
+        function toggleCategoryServiceType() {
             const categorySelect = document.querySelector('select[name="category"]');
-            const trainingServiceTypeContainer = document.getElementById('training-service-type-container');
-            
-            if (categorySelect && trainingServiceTypeContainer) {
-                if (categorySelect.value === 'training') {
-                    trainingServiceTypeContainer.style.display = 'block';
-                } else {
-                    trainingServiceTypeContainer.style.display = 'none';
-                    // Reset the value when hidden
-                    const radioInputs = trainingServiceTypeContainer.querySelectorAll('input[type="radio"]');
-                    radioInputs.forEach(input => input.checked = false);
-                }
+            const trainingContainer = document.getElementById('training-service-type-container');
+            const assistanceContainer = document.getElementById('assistance-service-type-container');
+            const socialTargetContainer = document.getElementById('social-programs-target-container');
+
+            if (!categorySelect) {
+                return;
+            }
+
+            const category = categorySelect.value;
+
+            if (trainingContainer) {
+                trainingContainer.style.display = category === 'training' ? 'block' : 'none';
+            }
+
+            if (assistanceContainer) {
+                assistanceContainer.style.display = category === 'assistance' ? 'block' : 'none';
+            }
+
+            if (socialTargetContainer) {
+                socialTargetContainer.style.display = category === 'social_programs' ? 'block' : 'none';
             }
         }
 
-        // Check on page load if category is already set
         document.addEventListener('DOMContentLoaded', function() {
-            toggleTrainingServiceType();
+            toggleCategoryServiceType();
         });
 
         // Form submission

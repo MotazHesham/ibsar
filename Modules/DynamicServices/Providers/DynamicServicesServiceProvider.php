@@ -42,6 +42,10 @@ class DynamicServicesServiceProvider extends ServiceProvider
         $this->app->singleton(\Modules\DynamicServices\Workflows\WorkflowResolver::class);
         $this->app->singleton(\Modules\DynamicServices\Services\DynamicOrderWorkflowService::class);
         $this->app->singleton(\Modules\DynamicServices\Services\TrainingWorkflowService::class);
+        $this->app->singleton(\Modules\DynamicServices\Services\AssistanceWorkflowService::class);
+        $this->app->singleton(\Modules\DynamicServices\Services\SocialProgramsWorkflowService::class);
+        $this->app->singleton(\Modules\DynamicServices\Services\SurgicalProceduresWorkflowService::class);
+        $this->app->singleton(\Modules\DynamicServices\Services\DetectionCenterWorkflowService::class);
     }
 
     /**
