@@ -223,10 +223,10 @@
                                         <td>{{ $raw->title }}</td>
                                         <td>
                                             <div class="avatar avatar-sm avatar-rounded">
-                                                <img src="{{ asset('assets/images/services/' . $raw->service_type . '.png') }}"
+                                                <img src="{{ \Modules\DynamicServices\Helpers\DynamicServiceHelper::getServiceIconUrl($raw->service_type) }}"
                                                     alt="img">
                                             </div> 
-                                            {{ $raw->service_type ? (\App\Helpers\DynamicServiceHelper::isDynamicService($raw->service_type) ? \App\Helpers\DynamicServiceHelper::getServiceTitle($raw->service_type) : \App\Models\Service::TYPE_SELECT[$raw->service_type]) : '' }}
+                                            {{ $raw->service_type ? (\Modules\DynamicServices\Helpers\DynamicServiceHelper::isDynamicService($raw->service_type) ? \Modules\DynamicServices\Helpers\DynamicServiceHelper::getServiceTitle($raw->service_type) : \App\Models\Service::TYPE_SELECT[$raw->service_type]) : '' }}
                                         </td>
                                         <td>
                                             @can('beneficiary_order_show')

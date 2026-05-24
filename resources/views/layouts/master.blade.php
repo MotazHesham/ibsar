@@ -47,18 +47,7 @@
 
     @yield('styles')
     @if (app()->getLocale() == 'ar')
-        <style>
-            @import url(https://fonts.googleapis.com/earlyaccess/droidarabicnaskh.css);
-
-            body {
-                font-family: 'Droid Arabic Naskh', 'Roboto', serif;
-            }
-
-            .main-menu i {
-                font-size: 1.1rem;
-                padding: 0 0 0 10px;
-            }
-        </style>
+        @include('layouts.components.arabic-font')
     @else
         <style>
             .main-menu i {

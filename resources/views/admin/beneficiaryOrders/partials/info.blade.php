@@ -7,20 +7,9 @@
     <div class="card-body">
         <div class="d-flex align-items-center mb-4 gap-2 flex-wrap">
             <span class="avatar avatar-lg me-1 bg-primary-gradient p-2">
-                @if(str_starts_with($beneficiaryOrder->service_type, 'dynamic_'))
-                    @php
-                        $dynamicServiceId = str_replace('dynamic_', '', $beneficiaryOrder->service_type);
-                        $dynamicService = \App\Models\DynamicService::find($dynamicServiceId);
-                    @endphp
-                    @if($dynamicService && $dynamicService->icon)
-                        <img src="{{ $dynamicService->icon }}" class="card-img" alt="{{ $dynamicService->title }}">
-                    @else
-                        <img src="{{ asset('assets/images/services/dynamic.png') }}" class="card-img" alt="Dynamic Service">
-                    @endif
-                @else
-                    <img src="{{ asset('assets/images/services/' . $beneficiaryOrder->service_type . '.png') }}"
-                        class="card-img" alt="...">
-                @endif
+                <img src="{{ \Modules\DynamicServices\Helpers\DynamicServiceHelper::getServiceIconUrl($beneficiaryOrder->service_type) }}"
+                    class="card-img"
+                    alt="{{ \Modules\DynamicServices\Helpers\DynamicServiceHelper::getServiceTitle($beneficiaryOrder->service_type) }}">
             </span>
             <div>
                 <h6 class="fw-medium mb-2 task-title">
@@ -53,7 +42,7 @@
             @if(str_starts_with($beneficiaryOrder->service_type, 'dynamic_'))
                 @php
                     $dynamicServiceId = str_replace('dynamic_', '', $beneficiaryOrder->service_type);
-                    $dynamicService = \App\Models\DynamicService::find($dynamicServiceId);
+                    $dynamicService = \Modules\DynamicServices\Models\DynamicService::find($dynamicServiceId);
                 @endphp
                 <h5>({{ $dynamicService ? $dynamicService->title : 'Dynamic Service' }})</h5>
             @else
@@ -77,7 +66,7 @@
                 @elseif($beneficiaryOrder->service_type == 'loan')
                     @includeIf('admin.beneficiaryOrders.partials.loan-info')
                 @elseif(str_starts_with($beneficiaryOrder->service_type, 'dynamic_'))
-                    @includeIf('admin.beneficiaryOrders.partials.dynamic-service-info')
+                    @includeIf('dynamicservices::partials.dynamic-service-info')
                 @endif
             </div>
         </div>

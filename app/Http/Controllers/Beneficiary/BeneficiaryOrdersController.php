@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Beneficiary;
 
-use App\Helpers\DynamicServiceHelper;
+use Modules\DynamicServices\Helpers\DynamicServiceHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\MediaUploadingTrait;
 use App\Http\Requests\Beneficiary\StoreBeneficiaryOrderRequest;
@@ -14,7 +14,7 @@ use App\Services\BeneficiaryOrderService;
 use App\Models\BeneficiaryOrder;
 use App\Models\Course;
 use App\Models\District;
-use App\Models\DynamicService;
+use Modules\DynamicServices\Models\DynamicService;
 use App\Models\EducationalQualification;
 use App\Models\FamilyRelationship;
 use App\Models\JobType;

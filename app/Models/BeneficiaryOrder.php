@@ -11,6 +11,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use App\Utils\LogsModelActivity;
 use Spatie\Activitylog\Models\Activity;
+use Modules\DynamicServices\Models\DynamicServiceOrder;
 
 class BeneficiaryOrder extends Model implements HasMedia
 {

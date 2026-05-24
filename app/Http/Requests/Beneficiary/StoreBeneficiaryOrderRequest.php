@@ -161,8 +161,8 @@ class StoreBeneficiaryOrderRequest extends FormRequest
             }
         } elseif (str_starts_with($this->service_type, 'dynamic_')) {
             // Dynamic service validation
-            $dynamicServiceId = \App\Helpers\DynamicServiceHelper::extractDynamicServiceId($this->service_type);
-            $dynamicService = \App\Models\DynamicService::find($dynamicServiceId);
+            $dynamicServiceId = \Modules\DynamicServices\Helpers\DynamicServiceHelper::extractDynamicServiceId($this->service_type);
+            $dynamicService = \Modules\DynamicServices\Models\DynamicService::find($dynamicServiceId);
             
             if ($dynamicService && $dynamicService->form_fields) {
                 $formFields = json_decode($dynamicService->form_fields, true);

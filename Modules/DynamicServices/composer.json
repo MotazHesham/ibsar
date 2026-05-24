@@ -1,0 +1,21 @@
+{
+    "name": "ibsar/dynamicservices",
+    "description": "Dynamic services management module",
+    "authors": [
+        {
+            "name": "Ibsar",
+            "email": "info@ibsar.sa"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {}
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\DynamicServices\\": ""
+        }
+    }
+}

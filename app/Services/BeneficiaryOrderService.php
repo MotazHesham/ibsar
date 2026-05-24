@@ -10,7 +10,9 @@ use App\Models\CourseStudent;
 use App\Models\ServiceLoan;
 use App\Models\ServiceLoanMember;
 use App\Models\Loan;
-use App\Models\DynamicServiceOrder;
+use Modules\DynamicServices\Helpers\DynamicServiceHelper;
+use Modules\DynamicServices\Models\DynamicService;
+use Modules\DynamicServices\Models\DynamicServiceOrder;
 use Carbon\Carbon;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -152,11 +154,10 @@ class BeneficiaryOrderService
             }
         } elseif (str_starts_with($request->service_type, 'dynamic_')) {
             // Handle dynamic service
-            $dynamicServiceId = \App\Helpers\DynamicServiceHelper::extractDynamicServiceId($request->service_type);
+            $dynamicServiceId = DynamicServiceHelper::extractDynamicServiceId($request->service_type);
             $beneficiaryOrder = BeneficiaryOrder::create($commonData);
-            
-            // Get dynamic service to access form fields metadata
-            $dynamicService = \App\Models\DynamicService::find($dynamicServiceId);
+
+            $dynamicService = DynamicService::find($dynamicServiceId);
             
             // Collect dynamic field data with metadata
             $fieldData = [];
@@ -184,11 +185,16 @@ class BeneficiaryOrderService
             }
             
             // Create dynamic service order record
-            DynamicServiceOrder::create([
+            $dynamicServiceOrder = DynamicServiceOrder::create([
                 'beneficiary_order_id' => $beneficiaryOrder->id,
                 'dynamic_service_id' => $dynamicServiceId,
                 'field_data' => $fieldData,
             ]);
+
+            if ($dynamicService) {
+                app(\Modules\DynamicServices\Services\DynamicOrderWorkflowService::class)
+                    ->initializeWorkflow($dynamicServiceOrder, $dynamicService);
+            }
         }
 
         if ($request->input('attachment', false)) {
