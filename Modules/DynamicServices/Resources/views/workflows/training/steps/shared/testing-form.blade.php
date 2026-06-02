@@ -3,6 +3,25 @@
         <h6 class="mb-0">نموذج الاختبار</h6>
     </div>
     <div class="card-body">
+        @if (($isGroup ?? false) && empty($testResult))
+            <div class="row mb-3">
+                @include('utilities.form.text', [
+                    'id' => 'test_attendance_barcode',
+                    'name' => 'test_attendance_barcode',
+                    'label' => 'باركود حضور الاختبار',
+                    'isRequired' => true,
+                    'grid' => 'col-md-8',
+                    'helperBlock' => 'بعد قص باركود حضور الاختبار يظهر نموذج التقييم للمدرب.',
+                ])
+                <div class="col-md-4 mb-3 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-primary w-100" id="open-test-qr-scanner">
+                        <i class="ri-qr-code-line me-1"></i>
+                        ماسح QR للاختبار
+                    </button>
+                </div>
+            </div>
+        @endif
+
         @if (!empty($testResult))
             <div class="alert {{ !empty($testResult['passed']) ? 'alert-success' : 'alert-danger' }} mb-3">
                 <strong>متوسط الدرجة: {{ $testResult['average'] ?? 0 }}%</strong>
@@ -21,7 +40,7 @@
             @endif
         @else
             <p class="text-muted small mb-3">معايير الاختبار الثابتة — أدخل الدرجة لكل معيار (0-100):</p>
-            <div class="row">
+            <div class="row" id="test-criteria-wrapper" @if (($isGroup ?? false)) style="display:none;" @endif>
                 @foreach ($testCriteria as $key => $label)
                     @include('utilities.form.text', [
                         'name' => "test_scores[{$key}]",
@@ -44,3 +63,19 @@
         @endif
     </div>
 </div>
+
+@if (($isGroup ?? false) && empty($testResult))
+    <div class="modal fade" id="testQrScannerModal" tabindex="-1" aria-labelledby="testQrScannerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title" id="testQrScannerModalLabel">مسح QR لحضور الاختبار</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="test-qr-reader" style="width:100%; min-height:260px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif

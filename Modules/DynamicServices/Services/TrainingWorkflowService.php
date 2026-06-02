@@ -5,6 +5,7 @@ namespace Modules\DynamicServices\Services;
 use App\Models\BeneficiaryOrder;
 use App\Models\User;
 use App\Models\UserAlert;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Modules\DynamicServices\Models\DynamicService;
@@ -43,6 +44,7 @@ class TrainingWorkflowService
     ): array {
         $workflowData = $dynamicServiceOrder->workflow_data ?? [];
         $beneficiary = $beneficiaryOrder->beneficiary;
+        $groupStats = $service->service_type === 'group' ? $this->getGroupWorkflowStats($service) : [];
 
         return [
             'trainers' => $this->getTrainers(),
@@ -60,6 +62,10 @@ class TrainingWorkflowService
             'testResult' => $workflowData['test'] ?? [],
             'hasDonationAllocation' => $beneficiaryOrder->donationAllocations()->exists(),
             'programMeetings' => $service->program_meetings ?? [],
+            'groupApplicants' => $groupStats['applicants'] ?? collect(),
+            'groupApprovedCount' => $groupStats['approvedCount'] ?? 0,
+            'groupPendingCount' => $groupStats['pendingCount'] ?? 0,
+            'canScheduleGroupMeetings' => $groupStats['canScheduleMeetings'] ?? false,
         ];
     }
 
@@ -78,7 +84,8 @@ class TrainingWorkflowService
             TrainingWorkflowHandler::STEP_EVALUATION => $this->validateEvaluationForm($data),
             TrainingWorkflowHandler::STEP_SESSION_SCHEDULING => $this->validateSessionSchedule($data, $action),
             TrainingWorkflowHandler::STEP_SEND_MEETING_SCHEDULE => $this->validateGroupSchedule($data),
-            TrainingWorkflowHandler::STEP_TESTING => $this->validateTestForm($data, $action),
+            TrainingWorkflowHandler::STEP_START_PROGRAM => $this->validateGroupAttendance($data, $action),
+            TrainingWorkflowHandler::STEP_TESTING => $this->validateTestForm($data, $action, $service),
             default => $data,
         };
     }
@@ -181,7 +188,20 @@ class TrainingWorkflowService
         ];
     }
 
-    protected function validateTestForm(array $data, string $action): array
+    protected function validateGroupAttendance(array $data, string $action): array
+    {
+        if ($action !== TrainingWorkflowHandler::ACTION_MARK_PROGRAM_ATTENDANCE) {
+            return $data;
+        }
+
+        return Validator::make($data, [
+            'attendance_barcode' => 'required|string|max:255',
+        ], [
+            'attendance_barcode.required' => 'يرجى مسح الباركود لتسجيل الحضور.',
+        ])->validate();
+    }
+
+    protected function validateTestForm(array $data, string $action, DynamicService $service): array
     {
         if ($action === TrainingWorkflowHandler::ACTION_SUBMIT_TEST) {
             $rules = [];
@@ -189,6 +209,9 @@ class TrainingWorkflowService
                 $rules["test_scores.{$key}"] = 'required|numeric|min:0|max:100';
             }
             $rules['needs_device'] = 'required|in:yes,no';
+            if ($service->service_type === 'group') {
+                $rules['test_attendance_barcode'] = 'required|string|max:255';
+            }
 
             $validated = Validator::make($data, $rules)->validate();
 
@@ -202,6 +225,9 @@ class TrainingWorkflowService
                     'average' => $average,
                     'passed' => $passed,
                     'needs_device' => $validated['needs_device'] === 'yes',
+                    'attendance_barcode' => $validated['test_attendance_barcode'] ?? null,
+                    'attended' => !empty($validated['test_attendance_barcode']) || $service->service_type !== 'group',
+                    'attendance_scanned_at' => !empty($validated['test_attendance_barcode']) ? now()->toDateTimeString() : null,
                     'submitted_at' => now()->toDateTimeString(),
                     'satisfaction_completed' => false,
                 ],
@@ -314,6 +340,94 @@ class TrainingWorkflowService
         $alert->users()->sync([$userId]);
     }
 
+    public function notifyStaffUserAlert(string $text, ?string $link = null, ?Collection $staffUsers = null): void
+    {
+        $users = $staffUsers ?? User::query()
+            ->where('user_type', 'staff')
+            ->whereIn('employee_type', ['trainer', 'specialist'])
+            ->get(['id']);
+
+        if ($users->isEmpty()) {
+            return;
+        }
+
+        $alert = UserAlert::create([
+            'alert_text' => $text,
+            'alert_link' => $link ?? '#',
+            'user_type' => 'staff',
+        ]);
+
+        $alert->users()->sync($users->pluck('id')->all());
+    }
+
+    public function getGroupWorkflowStats(DynamicService $service): array
+    {
+        $orders = DynamicServiceOrder::query()
+            ->where('dynamic_service_id', $service->id)
+            ->with('beneficiaryOrder.beneficiary.user')
+            ->orderBy('created_at')
+            ->get();
+
+        $approvedCount = $orders->filter(function (DynamicServiceOrder $order) {
+            return in_array($order->workflow_step, [
+                TrainingWorkflowHandler::STEP_SEND_MEETING_SCHEDULE,
+                TrainingWorkflowHandler::STEP_START_PROGRAM,
+                TrainingWorkflowHandler::STEP_TESTING,
+                TrainingWorkflowHandler::STEP_COMPLETED,
+            ], true) && $order->workflow_step !== TrainingWorkflowHandler::STEP_REJECTED;
+        })->count();
+
+        $pendingCount = $orders->where('workflow_step', TrainingWorkflowHandler::STEP_INITIAL_APPROVAL)->count();
+
+        $applicants = $orders->map(function (DynamicServiceOrder $order) {
+            $beneficiaryOrder = $order->beneficiaryOrder;
+            $beneficiaryName = $beneficiaryOrder?->beneficiary?->user?->name
+                ?? $beneficiaryOrder?->beneficiary?->name
+                ?? ('مستفيد #' . ($beneficiaryOrder?->id ?? $order->beneficiary_order_id));
+
+            return [
+                'beneficiary_order_id' => $beneficiaryOrder?->id,
+                'name' => $beneficiaryName,
+                'step' => $order->workflow_step,
+                'is_approved' => in_array($order->workflow_step, [
+                    TrainingWorkflowHandler::STEP_SEND_MEETING_SCHEDULE,
+                    TrainingWorkflowHandler::STEP_START_PROGRAM,
+                    TrainingWorkflowHandler::STEP_TESTING,
+                    TrainingWorkflowHandler::STEP_COMPLETED,
+                ], true),
+            ];
+        });
+
+        return [
+            'approvedCount' => $approvedCount,
+            'pendingCount' => $pendingCount,
+            'canScheduleMeetings' => $approvedCount > 0 && $pendingCount === 0,
+            'applicants' => $applicants,
+        ];
+    }
+
+    public function approvedGroupOrdersForScheduling(DynamicService $service)
+    {
+        return DynamicServiceOrder::query()
+            ->where('dynamic_service_id', $service->id)
+            ->where('workflow_step', TrainingWorkflowHandler::STEP_SEND_MEETING_SCHEDULE)
+            ->with('beneficiaryOrder.beneficiary')
+            ->get();
+    }
+
+    public function notifyGroupBeneficiaries(DynamicService $service, string $text): void
+    {
+        $orders = BeneficiaryOrder::query()
+            ->where('service_type', 'dynamic_' . $service->id)
+            ->where('accept_status', 'yes')
+            ->with('beneficiary')
+            ->get();
+
+        foreach ($orders as $order) {
+            $this->notifyBeneficiaryUserAlert($order, $text);
+        }
+    }
+
     public function beneficiaryOrderShowUrl(BeneficiaryOrder $beneficiaryOrder): string
     {
         return route('beneficiary.beneficiary-orders.show', $beneficiaryOrder);
@@ -322,6 +436,58 @@ class TrainingWorkflowService
     public function attendanceQrPayload(BeneficiaryOrder $beneficiaryOrder, int $sessionNumber): string
     {
         return 'training_attendance:' . $beneficiaryOrder->id . ':' . $sessionNumber;
+    }
+
+    public function resolveBeneficiaryOrderIdFromBarcode(string $barcode): int
+    {
+        $payload = trim($barcode);
+        if (preg_match('/^training_attendance:(\d+):(\d+)$/', $payload, $matches)) {
+            return (int) ($matches[1] ?? 0);
+        }
+
+        if (preg_match('/^training_test:(\d+)$/', $payload, $matches)) {
+            return (int) ($matches[1] ?? 0);
+        }
+
+        if (preg_match('/^training_group_attendance:(\d+)$/', $payload, $matches)) {
+            return (int) ($matches[1] ?? 0);
+        }
+
+        throw ValidationException::withMessages([
+            'attendance_barcode' => 'صيغة الباركود غير صحيحة لمسار التدريب.',
+        ]);
+    }
+
+    public function resolveTestBeneficiaryOrderIdFromBarcode(string $barcode): int
+    {
+        $payload = trim($barcode);
+        if (preg_match('/^training_test:(\d+)$/', $payload, $matches)) {
+            return (int) ($matches[1] ?? 0);
+        }
+
+        throw ValidationException::withMessages([
+            'test_attendance_barcode' => 'صيغة باركود الاختبار غير صحيحة.',
+        ]);
+    }
+
+    public function markGroupAttendance(DynamicServiceOrder $dynamicServiceOrder, array $meta = []): void
+    {
+        $workflowData = $dynamicServiceOrder->workflow_data ?? [];
+        $groupAttendance = $workflowData['group_attendance'] ?? [];
+        $scans = $groupAttendance['scans'] ?? [];
+
+        $scans[] = array_merge([
+            'scanned_at' => now()->toDateTimeString(),
+            'scanned_by' => auth()->id(),
+        ], $meta);
+
+        $workflowData['group_attendance'] = [
+            'attended' => true,
+            'last_scanned_at' => now()->toDateTimeString(),
+            'scans' => $scans,
+        ];
+
+        $dynamicServiceOrder->update(['workflow_data' => $workflowData]);
     }
 
     public function submitBeneficiarySatisfaction(
@@ -338,12 +504,6 @@ class TrainingWorkflowService
 
         $workflowData = $dynamicServiceOrder->workflow_data ?? [];
         $test = $workflowData['test'] ?? [];
-
-        if (empty($test['passed'])) {
-            throw ValidationException::withMessages([
-                'satisfaction' => 'لا يمكن إكمال استبيان الرضا قبل اجتياز الاختبار.',
-            ]);
-        }
 
         if (! empty($test['satisfaction_completed'])) {
             throw ValidationException::withMessages([

@@ -39,12 +39,20 @@
         <div class="row">
             @php
                 $sessionOptions = !empty($sessions)
-                    ? collect($sessions)->mapWithKeys(fn ($session) => [
-                        $session['number'] => 'الجلسة ' . $session['number'],
-                    ])->all()
-                    : collect(range(1, max(1, (int) $sessionsCount)))->mapWithKeys(fn ($number) => [
-                        $number => 'الجلسة ' . $number,
-                    ])->all();
+                    ? collect($sessions)
+                        ->mapWithKeys(
+                            fn($session) => [
+                                $session['number'] => 'الجلسة ' . $session['number'],
+                            ],
+                        )
+                        ->all()
+                    : collect(range(1, max(1, (int) $sessionsCount)))
+                        ->mapWithKeys(
+                            fn($number) => [
+                                $number => 'الجلسة ' . $number,
+                            ],
+                        )
+                        ->all();
             @endphp
             @include('utilities.form.select', [
                 'id' => 'session_number_input',
@@ -73,7 +81,41 @@
                 'helperBlock' => '',
             ])
         </div>
+        <div class="row mt-2">
+            @include('utilities.form.text', [
+                'id' => 'attendance_barcode',
+                'name' => 'attendance_barcode',
+                'label' => 'باركود حضور الجلسة',
+                'isRequired' => false,
+                'grid' => 'col-md-8',
+                'helperBlock' => 'يمكن إدخال الباركود يدويًا أو استخدام زر ماسح QR.',
+            ])
+            <div class="col-md-4 mb-3 d-flex align-items-end">
+                <button type="button" class="btn btn-outline-primary w-100" id="open-attendance-qr-scanner">
+                    <i class="ri-qr-code-line me-1"></i>
+                    ماسح QR للحضور
+                </button>
+            </div>
+        </div>
+        <button type="submit" class="d-none" id="submit-scanned-attendance" name="workflow_action"
+            value="mark_session_attended"></button>
         <p class="text-muted small mb-0 mt-2">يُرسَل الموعد للمستفيد ويظهر الباركود في صفحته. عند قص الباركود سجّل
             الحضور.</p>
+    </div>
+</div>
+
+<div class="modal fade" id="attendanceQrScannerModal" tabindex="-1" aria-labelledby="attendanceQrScannerModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="attendanceQrScannerModalLabel">مسح QR لتسجيل الحضور</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="attendance-qr-reader" style="width: 100%; min-height: 260px;"></div>
+                <p class="small text-muted mt-2 mb-0">وجّه الكاميرا إلى QR الخاص بالمستفيد. سيتم تسجيل الحضور تلقائيًا بعد المسح.</p>
+            </div>
+        </div>
     </div>
 </div>

@@ -222,13 +222,18 @@
             </div>
         @endif
 
-        @if (!empty($testResult['passed']) && empty($testResult['satisfaction_completed']))
+        @if (!empty($testResult) && empty($testResult['satisfaction_completed']))
             <div class="card border border-warning mt-3">
                 <div class="card-header py-2">
                     <h6 class="mb-0">استبيان تقييم الرضا</h6>
                 </div>
                 <div class="card-body">
-                    <p class="small text-muted">لا يمكن استلام الشهادة أو الجهاز إلا بعد إكمال استبيان الرضا.</p>
+                    <p class="small text-muted">
+                        يرجى تعبئة استبيان الرضا مباشرة بعد حفظ نتيجة الاختبار.
+                        @if (!empty($testResult['passed']))
+                            لا يمكن استلام الشهادة أو الجهاز إلا بعد إكمال استبيان الرضا.
+                        @endif
+                    </p>
                     <form action="{{ route('beneficiary.beneficiary-orders.training-satisfaction', $beneficiaryOrder) }}" method="POST">
                         @csrf
                         <div class="mb-3">

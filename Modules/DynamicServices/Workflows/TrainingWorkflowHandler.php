@@ -3,6 +3,7 @@
 namespace Modules\DynamicServices\Workflows;
 
 use App\Models\BeneficiaryOrder;
+use App\Services\WorkflowFinanceRequestService;
 use Modules\DynamicServices\Models\DynamicService;
 use Modules\DynamicServices\Models\DynamicServiceOrder;
 use Illuminate\Validation\ValidationException;
@@ -35,9 +36,9 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
     public const ACTION_MARK_PROGRAM_ATTENDANCE = 'mark_program_attendance';
 
     public function __construct(
-        protected TrainingWorkflowService $trainingService
-    ) {
-    }
+        protected TrainingWorkflowService $trainingService,
+        protected WorkflowFinanceRequestService $financeRequestService
+    ) {}
 
     public function category(): string
     {
@@ -89,7 +90,7 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
         }
 
         if ($service->service_type === 'group') {
-            return $this->groupActions($dynamicServiceOrder);
+            return $this->groupActions($dynamicServiceOrder, $service);
         }
 
         return $this->individualActions($beneficiaryOrder, $dynamicServiceOrder);
@@ -133,18 +134,21 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
         };
     }
 
-    protected function groupActions(DynamicServiceOrder $dynamicServiceOrder): array
+    protected function groupActions(DynamicServiceOrder $dynamicServiceOrder, DynamicService $service): array
     {
         $test = $dynamicServiceOrder->workflow_data['test'] ?? null;
+        $groupStats = $this->trainingService->getGroupWorkflowStats($service);
 
         return match ($dynamicServiceOrder->workflow_step) {
             self::STEP_INITIAL_APPROVAL => $this->approvalActions('يعتمد', 'لا يعتمد'),
-            self::STEP_SEND_MEETING_SCHEDULE => [[
-                'key' => self::ACTION_SUBMIT_GROUP_SCHEDULE,
-                'label' => 'حفظ وإرسال جدول اللقاءات',
-                'type' => 'primary',
-                'form_submit' => true,
-            ]],
+            self::STEP_SEND_MEETING_SCHEDULE => $groupStats['canScheduleMeetings']
+                ? [[
+                    'key' => self::ACTION_SUBMIT_GROUP_SCHEDULE,
+                    'label' => 'حفظ وإرسال جدول اللقاءات',
+                    'type' => 'primary',
+                    'form_submit' => true,
+                ]]
+                : [],
             self::STEP_START_PROGRAM => [[
                 'key' => self::ACTION_MARK_PROGRAM_ATTENDANCE,
                 'label' => 'تسجيل حضور (قص الباركود)',
@@ -324,9 +328,9 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
         match (true) {
             $step === self::STEP_INITIAL_APPROVAL && $action === self::ACTION_APPROVE => $this->handleGroupInitialApproval($beneficiaryOrder, $dynamicServiceOrder),
 
-            $step === self::STEP_SEND_MEETING_SCHEDULE && $action === self::ACTION_SUBMIT_GROUP_SCHEDULE => $this->handleGroupSchedule($beneficiaryOrder, $dynamicServiceOrder, $data),
+            $step === self::STEP_SEND_MEETING_SCHEDULE && $action === self::ACTION_SUBMIT_GROUP_SCHEDULE => $this->handleGroupSchedule($beneficiaryOrder, $dynamicServiceOrder, $service, $data),
 
-            $step === self::STEP_START_PROGRAM && $action === self::ACTION_MARK_PROGRAM_ATTENDANCE => $this->appendHistory($dynamicServiceOrder, $step, $action),
+            $step === self::STEP_START_PROGRAM && $action === self::ACTION_MARK_PROGRAM_ATTENDANCE => $this->handleGroupAttendanceScan($beneficiaryOrder, $dynamicServiceOrder, $service, $data),
 
             $step === self::STEP_START_PROGRAM && $action === self::ACTION_ADVANCE => $this->handleAdvanceToTesting($beneficiaryOrder, $dynamicServiceOrder),
 
@@ -338,6 +342,87 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
 
             default => null,
         };
+    }
+
+    protected function handleGroupAttendanceScan(
+        BeneficiaryOrder $beneficiaryOrder,
+        DynamicServiceOrder $dynamicServiceOrder,
+        DynamicService $service,
+        array $data
+    ): void {
+        $targetBeneficiaryOrderId = $this->trainingService->resolveBeneficiaryOrderIdFromBarcode(
+            (string) ($data['attendance_barcode'] ?? '')
+        );
+
+        $targetBeneficiaryOrder = BeneficiaryOrder::query()
+            ->where('id', $targetBeneficiaryOrderId)
+            ->where('service_type', 'dynamic_' . $service->id)
+            ->first();
+
+        if (! $targetBeneficiaryOrder || ! $targetBeneficiaryOrder->dynamicServiceOrder) {
+            throw ValidationException::withMessages([
+                'attendance_barcode' => 'الباركود لا يخص أحد مستفيدي هذا البرنامج.',
+            ]);
+        }
+
+        $targetOrder = $targetBeneficiaryOrder->dynamicServiceOrder;
+        if (! in_array($targetOrder->workflow_step, [self::STEP_START_PROGRAM, self::STEP_TESTING, self::STEP_COMPLETED], true)) {
+            throw ValidationException::withMessages([
+                'attendance_barcode' => 'لا يمكن تسجيل حضور هذا المستفيد في المرحلة الحالية.',
+            ]);
+        }
+
+        $this->trainingService->markGroupAttendance($targetOrder, [
+            'barcode' => $data['attendance_barcode'] ?? null,
+            'scanned_from_beneficiary_order_id' => $beneficiaryOrder->id,
+        ]);
+
+        $historyData = [
+            'attendance_barcode' => $data['attendance_barcode'] ?? null,
+            'beneficiary_order_id' => $targetBeneficiaryOrder->id,
+        ];
+        $this->appendHistory($targetOrder, self::STEP_START_PROGRAM, self::ACTION_MARK_PROGRAM_ATTENDANCE, $historyData);
+
+        $this->financeRequestService->queue(
+            beneficiaryOrder: $targetBeneficiaryOrder,
+            workflowCategory: DynamicService::CATEGORY_TRAINING,
+            workflowStep: self::STEP_START_PROGRAM,
+            triggerAction: self::ACTION_MARK_PROGRAM_ATTENDANCE . '_' . now()->format('YmdHisv'),
+            title: 'قيد حضور تدريب جماعي — ' . $service->title,
+            source: $targetOrder,
+            reference: $service,
+        );
+
+        $approvedOrders = $this->trainingService->approvedGroupOrdersForScheduling($service);
+        $allAttended = $approvedOrders->every(function (DynamicServiceOrder $order) {
+            return ! empty($order->workflow_data['group_attendance']['attended']);
+        });
+
+        if ($allAttended && $approvedOrders->isNotEmpty()) {
+            foreach ($approvedOrders as $approvedOrder) {
+                $approvedBeneficiaryOrder = $approvedOrder->beneficiaryOrder;
+                if (! $approvedBeneficiaryOrder) {
+                    continue;
+                }
+
+                $this->moveToStep($approvedOrder, self::STEP_TESTING, 3);
+                $this->trainingService->mergeWorkflowData($approvedOrder, [
+                    'testing' => array_merge($approvedOrder->workflow_data['testing'] ?? [], [
+                        'schedule_required' => true,
+                        'schedule_required_at' => now()->toDateTimeString(),
+                        'notified_by' => auth()->id(),
+                    ]),
+                ]);
+                $this->appendHistory($approvedOrder, self::STEP_TESTING, self::ACTION_ADVANCE, [
+                    'note' => 'اكتمل حضور الجلسات وتم إشعار الموظف المعني بجدولة الاختبار.',
+                ]);
+            }
+
+            $this->trainingService->notifyStaffUserAlert(
+                'اكتمل حضور البرنامج التدريبي الجماعي (' . $service->title . '). يرجى جدولة موعد الاختبار للمستفيدين.',
+                route('admin.dynamic-services.show', $service)
+            );
+        }
     }
 
     protected function handleInitialApproval(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
@@ -356,7 +441,7 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
 
         $appointment = $data['evaluation_appointment'] ?? [];
         $types = collect($appointment['types'] ?? [])->map(
-            fn ($type) => TrainingWorkflowService::EVALUATION_APPOINTMENT_TYPES[$type] ?? $type
+            fn($type) => TrainingWorkflowService::EVALUATION_APPOINTMENT_TYPES[$type] ?? $type
         )->implode('، ');
 
         $this->trainingService->notifyBeneficiaryUserAlert(
@@ -501,11 +586,29 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
     protected function handleTestSubmit(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
     {
         $test = $data['test'] ?? [];
+        $barcode = $test['attendance_barcode'] ?? null;
+        if ($barcode) {
+            $barcodeOrderId = $this->trainingService->resolveTestBeneficiaryOrderIdFromBarcode($barcode);
+            if ((int) $barcodeOrderId !== (int) $beneficiaryOrder->id) {
+                throw ValidationException::withMessages([
+                    'test_attendance_barcode' => 'باركود الاختبار لا يخص هذا المستفيد.',
+                ]);
+            }
+        }
+
         $this->trainingService->mergeWorkflowData($dynamicServiceOrder, $data);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_TESTING, 'test_attendance_scanned', [
+            'attendance_barcode' => $barcode,
+            'attended' => !empty($test['attended']),
+        ]);
 
         if (empty($test['passed'])) {
             $this->trainingService->notifyBeneficiaryUserAlert($beneficiaryOrder, 'لم يتم الاجتياز في الاختبار. متوسط الدرجة: ' . ($test['average'] ?? 0) . '%');
             $this->appendHistory($dynamicServiceOrder, self::STEP_TESTING, self::ACTION_SUBMIT_TEST, $test);
+            $this->trainingService->notifyBeneficiaryUserAlert(
+                $beneficiaryOrder,
+                'تم حفظ نتيجة الاختبار. نرجو تعبئة استبيان تقييم الرضا من صفحة الطلب.'
+            );
 
             return;
         }
@@ -514,7 +617,32 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
             ? 'تم الاجتياز. يرجى إكمال استبيان الرضا قبل استلام الجهاز.'
             : 'تم الاجتياز. يرجى إكمال استبيان الرضا قبل إصدار الشهادة.';
 
+        if (! empty($test['needs_device'])) {
+            $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+                'warehouse_request' => [
+                    'status' => 'pending',
+                    'requested_at' => now()->toDateTimeString(),
+                    'requested_by' => auth()->id(),
+                ],
+            ]);
+            $this->trainingService->notifyStaffUserAlert(
+                'المستفيد #' . $beneficiaryOrder->id . ' اجتاز الاختبار ويحتاج جهاز. بانتظار إكمال الرضا لبدء إجراءات المخزون.',
+                route('admin.beneficiary-orders.show', $beneficiaryOrder)
+            );
+        } else {
+            $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+                'certificate' => [
+                    'pending' => true,
+                    'requested_at' => now()->toDateTimeString(),
+                ],
+            ]);
+        }
+
         $this->trainingService->notifyBeneficiaryUserAlert($beneficiaryOrder, $message);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'يرجى تعبئة استبيان تقييم الرضا مباشرة بعد نتيجة الاختبار.'
+        );
         $this->appendHistory($dynamicServiceOrder, self::STEP_TESTING, self::ACTION_SUBMIT_TEST, $test);
     }
 
@@ -524,6 +652,38 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
         $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
             'test' => array_merge($existing, ['satisfaction_completed' => true]),
         ]);
+        $workflowData = $dynamicServiceOrder->fresh()->workflow_data ?? [];
+        $beneficiaryOrder = $dynamicServiceOrder->beneficiaryOrder;
+        if ($beneficiaryOrder) {
+            if (!empty($workflowData['test']['needs_device'])) {
+                $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+                    'warehouse_request' => array_merge($workflowData['warehouse_request'] ?? [], [
+                        'status' => 'ready_for_delivery',
+                        'ready_at' => now()->toDateTimeString(),
+                    ]),
+                ]);
+                $this->trainingService->notifyStaffUserAlert(
+                    'تم إكمال الرضا للمستفيد #' . $beneficiaryOrder->id . '. يمكن لقسم المخزون بدء تسليم الجهاز.',
+                    route('admin.beneficiary-orders.show', $beneficiaryOrder)
+                );
+                $this->trainingService->notifyBeneficiaryUserAlert(
+                    $beneficiaryOrder,
+                    'تم استلام تقييم الرضا. سيتم التواصل معكم من قسم المخزون لتسليم الجهاز.'
+                );
+            } else {
+                $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+                    'certificate' => [
+                        'issued' => true,
+                        'issued_at' => now()->toDateTimeString(),
+                    ],
+                ]);
+                $this->trainingService->notifyBeneficiaryUserAlert(
+                    $beneficiaryOrder,
+                    'تم اعتماد إصدار الشهادة بعد إكمال استبيان الرضا. يمكنكم مراجعة حسابكم.'
+                );
+            }
+        }
+
         $this->appendHistory($dynamicServiceOrder, self::STEP_TESTING, self::ACTION_COMPLETE_SATISFACTION);
     }
 
@@ -532,20 +692,32 @@ class TrainingWorkflowHandler extends AbstractWorkflowHandler
         $this->approveAndMove($beneficiaryOrder, $dynamicServiceOrder, self::STEP_SEND_MEETING_SCHEDULE, 1);
         $this->trainingService->notifyBeneficiaryUserAlert(
             $beneficiaryOrder,
-            'تم قبول طلبكم. سيتم إشعاركم بمواعيد البرنامج لاحقاً.'
+            'تم قبول طلبكم. سيتم إشعاركم بمواعيد البرنامج ورابط سداد الرسوم (إن وجدت) أو رابط الاختبارات القبلية.'
         );
     }
 
-    protected function handleGroupSchedule(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    protected function handleGroupSchedule(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, DynamicService $service, array $data): void
     {
-        $this->trainingService->mergeWorkflowData($dynamicServiceOrder, $data);
-        $this->moveToStep($dynamicServiceOrder, self::STEP_START_PROGRAM, 2);
-
         $schedule = $data['group_schedule'] ?? [];
-        $this->trainingService->notifyBeneficiaryUserAlert(
-            $beneficiaryOrder,
-            'تم تحديد جدول اللقاءات من ' . ($schedule['start_date'] ?? '') . ' إلى ' . ($schedule['end_date'] ?? '')
-        );
-        $this->appendHistory($dynamicServiceOrder, self::STEP_START_PROGRAM, self::ACTION_SUBMIT_GROUP_SCHEDULE, $schedule);
+        $groupStats = $this->trainingService->getGroupWorkflowStats($service);
+        if (!($groupStats['canScheduleMeetings'] ?? false)) {
+            throw ValidationException::withMessages([
+                'schedule_start_date' => 'لا يمكن تحديد جدول اللقاءات قبل اكتمال اعتماد جميع المتقدمين.',
+            ]);
+        }
+
+        $groupOrders = $this->trainingService->approvedGroupOrdersForScheduling($service);
+        foreach ($groupOrders as $groupOrder) {
+            $this->trainingService->mergeWorkflowData($groupOrder, $data);
+            $this->moveToStep($groupOrder, self::STEP_START_PROGRAM, 2);
+            $this->appendHistory($groupOrder, self::STEP_START_PROGRAM, self::ACTION_SUBMIT_GROUP_SCHEDULE, $schedule);
+        }
+
+        $message = 'تم تحديد جدول اللقاءات من ' . ($schedule['start_date'] ?? '') . ' إلى ' . ($schedule['end_date'] ?? '') .
+            '، الأيام: ' . implode('، ', $schedule['days'] ?? []) .
+            '، من ' . ($schedule['start_time'] ?? '') . ' إلى ' . ($schedule['end_time'] ?? '') .
+            '. يمكنكم الاطلاع على باركود الحضور من صفحة الطلب.';
+
+        $this->trainingService->notifyGroupBeneficiaries($service, $message);
     }
 }
