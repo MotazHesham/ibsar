@@ -373,7 +373,7 @@ class BeneficiaryOrdersController extends Controller
             return back()->withErrors($e->errors());
         }
 
-        return back()->with('message', 'تم إرسال إيصال السداد.');
+        return back()->with('success', 'تم إرسال إيصال السداد.');
     }
 
     public function submitDetectionPickup(Request $request, BeneficiaryOrder $beneficiaryOrder)
@@ -411,7 +411,7 @@ class BeneficiaryOrdersController extends Controller
             return back()->withErrors($e->errors());
         }
 
-        return back()->with('message', 'تم إرسال إيصال السداد.');
+        return back()->with('success', 'تم إرسال إيصال السداد.');
     }
 
     public function submitDetectionSatisfaction(Request $request, BeneficiaryOrder $beneficiaryOrder)

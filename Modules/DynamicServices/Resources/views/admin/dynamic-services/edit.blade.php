@@ -128,6 +128,7 @@
                         <option value="date">{{ trans('cruds.dynamicService.fields.field_types.date') }}</option>
                         <option value="time">{{ trans('cruds.dynamicService.fields.field_types.time') }}</option>
                         <option value="number">{{ trans('cruds.dynamicService.fields.field_types.number') }}</option>
+                        <option value="file">{{ trans('cruds.dynamicService.fields.field_types.file') }}</option>
                     </select>
                 </div>
                 <div class="col-md-6">

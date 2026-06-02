@@ -276,6 +276,9 @@ return [
     'donation_allocation_create' => 'تخصيص التبرعات',
     'donation_allocation_delete' => 'حذف تخصيص التبرعات',
     'donation_allocation_access' => 'قائمة تخصيصات التبرعات',
+    'workflow_finance_request_access' => 'قائمة طلبات المالية',
+    'workflow_finance_request_show' => 'عرض طلب مالي',
+    'workflow_finance_request_edit' => 'تحديد التكلفة وترحيل القيد',
     
     // Letters Management Permissions
     'letters_managment_access' => 'إدارة المراسلات الإدارية',

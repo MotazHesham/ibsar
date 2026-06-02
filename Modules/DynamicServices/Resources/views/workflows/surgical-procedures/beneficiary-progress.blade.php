@@ -22,5 +22,11 @@
         @if ($workflowContext['isCompleted'] || $beneficiaryOrder->done)
             <div class="alert alert-success">تم إكمال مسار العملية الجراحية</div>
         @endif
+
+        @include('dynamicservices::workflows.partials.history', [
+            'dynamicServiceOrder' => $dynamicServiceOrder,
+            'workflowContext' => $workflowContext,
+            'open' => true,
+        ])
     </div>
 </div>

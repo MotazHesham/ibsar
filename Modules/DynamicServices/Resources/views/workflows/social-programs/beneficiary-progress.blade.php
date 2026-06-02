@@ -18,5 +18,11 @@
             @endswitch
         @endif
         <p class="text-muted small mt-3 mb-0">المسجلون: {{ $workflowContext['registeredCount'] ?? 0 }} / {{ $workflowContext['targetCount'] ?: '—' }}</p>
+
+        @include('dynamicservices::workflows.partials.history', [
+            'dynamicServiceOrder' => $workflowContext['dynamicServiceOrder'],
+            'workflowContext' => $workflowContext,
+            'open' => true,
+        ])
     </div>
 </div>

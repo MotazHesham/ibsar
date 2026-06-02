@@ -54,7 +54,7 @@ class UpdateDynamicServiceRequest extends FormRequest
                 foreach ($formFields as $field) {
                     validator($field, [
                         'label' => 'required|string|max:255',
-                        'type' => 'required|in:text,textarea,select,radio,checkbox,date,time,number',
+                        'type' => 'required|in:text,textarea,select,radio,checkbox,date,time,number,file',
                         'required' => 'boolean',
                         'grid' => 'nullable|string|in:col-md-3,col-md-4,col-md-6,col-md-12',
                         'options' => 'nullable|array',

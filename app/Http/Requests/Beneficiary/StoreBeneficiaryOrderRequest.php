@@ -190,6 +190,9 @@ class StoreBeneficiaryOrderRequest extends FormRequest
                         case 'url':
                             $fieldRules[] = 'url';
                             break;
+                        case 'file':
+                            $fieldRules[] = 'string';
+                            break;
                     }
                     
                     // Add custom validation if specified

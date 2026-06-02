@@ -32,13 +32,23 @@
             @endif
         @elseif ($outcome === 'low_vision_clinic')
             @if (!empty($contribution['amount']) && empty($financial['approved_at']))
-                <div class="alert alert-warning">
-                    المساهمة: {{ $contribution['amount'] }} — يرجى السداد ورفع الإيصال
-                    <form class="mt-2" method="POST" action="{{ route('beneficiary.beneficiary-orders.detection-receipt', $beneficiaryOrder) }}">@csrf
-                        @include('utilities.form.textarea', ['name' => 'receipt_notes', 'label' => 'ملاحظات الإيصال', 'isRequired' => false])
-                        <button class="btn btn-sm btn-primary">تأكيد رفع الإيصال</button>
-                    </form>
-                </div>
+                @if (!empty($financial['receipt_submitted_at']))
+                    <div class="alert alert-success mb-0">
+                        <i class="ri-check-line me-1"></i>
+                        تم إرسال إيصال السداد — جاري مراجعته من المالية.
+                        @if (!empty($financial['receipt_notes']))
+                            <div class="mt-2"><strong>ملاحظات الإيصال:</strong> {{ $financial['receipt_notes'] }}</div>
+                        @endif
+                    </div>
+                @else
+                    <div class="alert alert-warning">
+                        المساهمة: {{ $contribution['amount'] }} — يرجى السداد ورفع الإيصال
+                        <form class="mt-2" method="POST" action="{{ route('beneficiary.beneficiary-orders.detection-receipt', $beneficiaryOrder) }}">@csrf
+                            @include('utilities.form.textarea', ['name' => 'receipt_notes', 'label' => 'ملاحظات الإيصال', 'isRequired' => false, 'rawLabel' => true])
+                            <button type="submit" class="btn btn-sm btn-primary">تأكيد رفع الإيصال</button>
+                        </form>
+                    </div>
+                @endif
             @elseif (!empty($financial['approved_at']) && empty($pickup['confirmed_at']))
                 <div class="card border mb-3">
                     <div class="card-body">
@@ -63,5 +73,11 @@
                 @case('financial_approval')<div class="alert alert-info mb-0">جاري اعتماد المالية.</div>@break
             @endswitch
         @endif
+
+        @include('dynamicservices::workflows.partials.history', [
+            'dynamicServiceOrder' => $workflowContext['dynamicServiceOrder'],
+            'workflowContext' => $workflowContext,
+            'open' => true,
+        ])
     </div>
 </div>

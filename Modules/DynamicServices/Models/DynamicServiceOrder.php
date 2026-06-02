@@ -6,10 +6,12 @@ use App\Models\BeneficiaryOrder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class DynamicServiceOrder extends Model
+class DynamicServiceOrder extends Model implements HasMedia
 {
-    use SoftDeletes, HasFactory;
+    use SoftDeletes, HasFactory, InteractsWithMedia;
 
     public $table = 'dynamic_service_orders';
 
@@ -140,5 +142,10 @@ class DynamicServiceOrder extends Model
         }
 
         $this->field_data = $fieldData;
+    }
+
+    public function getDynamicFieldMedia(int $fieldId)
+    {
+        return $this->getFirstMedia('dynamic_field_' . $fieldId);
     }
 }

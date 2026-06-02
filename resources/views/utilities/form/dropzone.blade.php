@@ -1,6 +1,10 @@
 <div class="form-group mb-3 {{ $grid ?? '' }}">
     <label class="form-label">
-        {{ trans($label) }}
+        @if (!empty($rawLabel))
+            {{ $label }}
+        @else
+            {{ trans($label) }}
+        @endif
         @if ($isRequired)
             <span class="text-danger">*</span>
         @endif
@@ -12,15 +16,17 @@
             {{ $errors->first($name) }}
         </div>
     @endif
-    
+
     @if (isset($helperBlock))
-        <span class="help-block">{{ trans($helperBlock) }}</span>
-    @else
+        @if ($helperBlock !== '')
+            <span class="help-block">{{ !empty($rawLabel) ? $helperBlock : trans($helperBlock) }}</span>
+        @endif
+    @elseif (empty($rawLabel))
         <span class="help-block">{{ trans($label . '_helper') }}</span>
     @endif
 </div>
 
-@section('scripts') 
+@section('scripts')
     @parent
     <script>
         var form = $('#{{ $id ?? $name }}-dropzone').closest('form')[0];
@@ -37,27 +43,42 @@
                 width: 4096,
                 height: 4096
             },
-            success: function(file, response) { 
+            success: function(file, response) {
                 var existingInput = form.querySelector(`input[name="{{ $name }}"]`);
                 if (existingInput) {
                     existingInput.remove();
+                }
+                var existingOriginalInput = form.querySelector(`input[name="{{ $name }}_original_name"]`);
+                if (existingOriginalInput) {
+                    existingOriginalInput.remove();
                 }
                 var input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = '{{ $name }}';
                 input.value = response.name;
                 form.appendChild(input);
+                if (response.original_name) {
+                    var originalInput = document.createElement('input');
+                    originalInput.type = 'hidden';
+                    originalInput.name = '{{ $name }}_original_name';
+                    originalInput.value = response.original_name;
+                    form.appendChild(originalInput);
+                }
             },
             removedfile: function(file) {
                 var previewElement = file.previewElement;
                 if (previewElement) {
                     previewElement.remove();
                 }
-                
-                if (file.status !== 'error') { 
+
+                if (file.status !== 'error') {
                     var input = form.querySelector(`input[name="{{ $name }}"]`);
                     if (input) {
                         input.remove();
+                    }
+                    var originalInput = form.querySelector(`input[name="{{ $name }}_original_name"]`);
+                    if (originalInput) {
+                        originalInput.remove();
                     }
                     this.options.maxFiles = this.options.maxFiles + 1;
                 }
@@ -65,14 +86,14 @@
             init: function() {
                 @if (isset($model) && $model->{$collectionName ?? $name})
                     var file = {!! json_encode($model->{$collectionName ?? $name}) !!};
-                    this.displayExistingFile(file, file.preview ?? file.preview_url); 
+                    this.displayExistingFile(file, file.preview ?? file.preview_url);
                     var input = document.createElement('input');
                     input.type = 'hidden';
                     input.name = '{{ $name }}';
                     input.value = file.file_name;
                     form.appendChild(input);
-                    this.options.maxFiles = this.options.maxFiles - 1;   
-                @endif 
+                    this.options.maxFiles = this.options.maxFiles - 1;
+                @endif
             },
             error: function(file, response) {
                 let message = '';

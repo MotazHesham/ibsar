@@ -251,6 +251,9 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     // Donations
     Route::resource('donations', 'DonationsController')->only(['index', 'create', 'store', 'show']);
 
+    // Workflow finance requests (cross-workflow)
+    Route::resource('workflow-finance-requests', 'WorkflowFinanceRequestsController')->only(['index', 'show', 'update']);
+
     // Volunteers
     Route::delete('volunteers/destroy', 'VolunteersController@massDestroy')->name('volunteers.massDestroy');
     Route::post('volunteers/media', 'VolunteersController@storeMedia')->name('volunteers.storeMedia');

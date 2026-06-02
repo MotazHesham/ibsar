@@ -11,12 +11,12 @@ class PermissionsTableSeeder extends Seeder
     {
         $i = 1;
         $permissions = [
-            ['id'    => $i++,  'title' => 'statistics_access', 'type' => 'statistics_access', 'parent' => 2], 
+            ['id'    => $i++,  'title' => 'statistics_access', 'type' => 'statistics_access', 'parent' => 2],
             ['id'    => $i++,  'title' => 'user_alert_create', 'type' => 'user_alert', 'parent' => 2],
             ['id'    => $i++,  'title' => 'user_alert_show', 'type' => 'user_alert', 'parent' => 2],
             ['id'    => $i++,  'title' => 'user_alert_delete', 'type' => 'user_alert', 'parent' => 2],
             ['id'    => $i++,  'title' => 'user_alert_access', 'type' => 'user_alert', 'parent' => 2],
-            
+
             ['id'    => $i++,  'title' => 'archive_management_access', 'type' => 'archive.storage_location', 'parent' => 1],
             ['id'    => $i++,  'title' => 'archive_create', 'type' => 'archive', 'parent' => 0],
             ['id'    => $i++,  'title' => 'archive_edit', 'type' => 'archive', 'parent' => 0],
@@ -27,9 +27,9 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'storage_location_edit', 'type' => 'storage_location', 'parent' => 0],
             ['id'    => $i++,  'title' => 'storage_location_show', 'type' => 'storage_location', 'parent' => 0],
             ['id'    => $i++,  'title' => 'storage_location_delete', 'type' => 'storage_location', 'parent' => 0],
-            ['id'    => $i++,  'title' => 'storage_location_access', 'type' => 'storage_location', 'parent' => 0],  
+            ['id'    => $i++,  'title' => 'storage_location_access', 'type' => 'storage_location', 'parent' => 0],
 
-            ['id'    => $i++,  'title' => 'user_management_access', 'type' => 'role.user.department.section', 'parent' => 1], 
+            ['id'    => $i++,  'title' => 'user_management_access', 'type' => 'role.user.department.section', 'parent' => 1],
             ['id'    => $i++,  'title' => 'role_create', 'type' => 'role', 'parent' => 0],
             ['id'    => $i++,  'title' => 'role_edit', 'type' => 'role', 'parent' => 0],
             ['id'    => $i++,  'title' => 'role_show', 'type' => 'role', 'parent' => 0],
@@ -78,15 +78,15 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'task_priority_show', 'type' => 'task_priority', 'parent' => 0],
             ['id'    => $i++,  'title' => 'task_priority_delete', 'type' => 'task_priority', 'parent' => 0],
             ['id'    => $i++,  'title' => 'task_priority_access', 'type' => 'task_priority', 'parent' => 0],
-            
+
 
             ['id'    => $i++,  'title' => 'beneficiaries_managment_access', 'type' => 'beneficiary.beneficiary_family.beneficiary_file', 'parent' => 1],
             ['id'    => $i++,  'title' => 'beneficiary_create', 'type' => 'beneficiary', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_edit', 'type' => 'beneficiary', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_show', 'type' => 'beneficiary', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_delete', 'type' => 'beneficiary', 'parent' => 0],
-            ['id'    => $i++,  'title' => 'beneficiary_access', 'type' => 'beneficiary', 'parent' => 0], 
-            ['id'    => $i++,  'title' => 'beneficiary_un_completed_access', 'type' => 'beneficiary', 'parent' => 0], 
+            ['id'    => $i++,  'title' => 'beneficiary_access', 'type' => 'beneficiary', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'beneficiary_un_completed_access', 'type' => 'beneficiary', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_refused_access', 'type' => 'beneficiary', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_pending_access', 'type' => 'beneficiary', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_archive_access', 'type' => 'beneficiary', 'parent' => 0],
@@ -98,18 +98,18 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'beneficiary_family_delete', 'type' => 'beneficiary_family', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_family_access', 'type' => 'beneficiary_family', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_file_create', 'type' => 'beneficiary_file', 'parent' => 0],
-            ['id'    => $i++,  'title' => 'beneficiary_file_edit', 'type' => 'beneficiary_file', 'parent' => 0], 
+            ['id'    => $i++,  'title' => 'beneficiary_file_edit', 'type' => 'beneficiary_file', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_file_delete', 'type' => 'beneficiary_file', 'parent' => 0],
-            ['id'    => $i++,  'title' => 'beneficiary_file_access', 'type' => 'beneficiary_file', 'parent' => 0], 
+            ['id'    => $i++,  'title' => 'beneficiary_file_access', 'type' => 'beneficiary_file', 'parent' => 0],
 
-            ['id'    => $i++,  'title' => 'beneficiary_orders_management_access', 'type' => 'beneficiary_order.beneficiary_order_followup', 'parent' => 1],  
+            ['id'    => $i++,  'title' => 'beneficiary_orders_management_access', 'type' => 'beneficiary_order.beneficiary_order_followup', 'parent' => 1],
             ['id'    => $i++,  'title' => 'beneficiary_order_create', 'type' => 'beneficiary_order', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_order_edit', 'type' => 'beneficiary_order', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_order_show', 'type' => 'beneficiary_order', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_order_delete', 'type' => 'beneficiary_order', 'parent' => 0],
-            ['id'    => $i++,  'title' => 'beneficiary_order_access', 'type' => 'beneficiary_order', 'parent' => 0], 
-            ['id'    => $i++,  'title' => 'beneficiary_orders_archive_access', 'type' => 'beneficiary_order', 'parent' => 0], 
-            ['id'    => $i++,  'title' => 'beneficiary_orders_done_access', 'type' => 'beneficiary_order', 'parent' => 0], 
+            ['id'    => $i++,  'title' => 'beneficiary_order_access', 'type' => 'beneficiary_order', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'beneficiary_orders_archive_access', 'type' => 'beneficiary_order', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'beneficiary_orders_done_access', 'type' => 'beneficiary_order', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_orders_rejected_access', 'type' => 'beneficiary_order', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_orders_all_list_access', 'type' => 'beneficiary_order', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_orders_control_all_access', 'type' => 'beneficiary_order', 'parent' => 0],
@@ -117,12 +117,12 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'beneficiary_order_followup_edit', 'type' => 'beneficiary_order_followup', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_order_followup_show', 'type' => 'beneficiary_order_followup', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_order_followup_delete', 'type' => 'beneficiary_order_followup', 'parent' => 0],
-            ['id'    => $i++,  'title' => 'beneficiary_order_followup_access', 'type' => 'beneficiary_order_followup', 'parent' => 0],  
-            
+            ['id'    => $i++,  'title' => 'beneficiary_order_followup_access', 'type' => 'beneficiary_order_followup', 'parent' => 0],
+
             ['id'    => $i++,  'title' => 'report_managment_access', 'type' => 'task_report.beneficiary_report.beneficiary_orders_report', 'parent' => 1],
             ['id'    => $i++,  'title' => 'task_report_access', 'type' => 'task_report', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_report_access', 'type' => 'beneficiary_report', 'parent' => 0],
-            ['id'    => $i++,  'title' => 'beneficiary_orders_report_access', 'type' => 'beneficiary_orders_report', 'parent' => 0], 
+            ['id'    => $i++,  'title' => 'beneficiary_orders_report_access', 'type' => 'beneficiary_orders_report', 'parent' => 0],
 
             ['id'    => $i++,  'title' => 'faq_management_access', 'type' => 'faq_category.faq_question.user_query', 'parent' => 1],
             ['id'    => $i++,  'title' => 'faq_category_create', 'type' => 'faq_category', 'parent' => 0],
@@ -173,7 +173,7 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'subscription_show', 'type' => 'subscription', 'parent' => 0],
             ['id'    => $i++,  'title' => 'subscription_delete', 'type' => 'subscription', 'parent' => 0],
             ['id'    => $i++,  'title' => 'subscription_access', 'type' => 'subscription', 'parent' => 0],
-            
+
             // Services group (services management)
             ['id'    => $i++,  'title' => 'services_managment_access', 'type' => 'service.course.course_student.consultant.consultant_schedule.loan.dynamic_service', 'parent' => 1],
             ['id'    => $i++,  'title' => 'service_create', 'type' => 'service', 'parent' => 0],
@@ -231,6 +231,11 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'donation_allocation_delete', 'type' => 'donation_allocation', 'parent' => 0],
             ['id'    => $i++,  'title' => 'donation_allocation_access', 'type' => 'donation_allocation', 'parent' => 0],
 
+            // Workflow finance requests group
+            ['id'    => $i++,  'title' => 'workflow_finance_request_access', 'type' => 'workflow_finance_request', 'parent' => 1],
+            ['id'    => $i++,  'title' => 'workflow_finance_request_show', 'type' => 'workflow_finance_request', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'workflow_finance_request_edit', 'type' => 'workflow_finance_request', 'parent' => 0],
+
             // Volunteers group
             ['id'    => $i++,  'title' => 'volunteer_managment_access', 'type' => 'volunteer.volunteer_task', 'parent' => 1],
             ['id'    => $i++,  'title' => 'volunteer_create', 'type' => 'volunteer', 'parent' => 0],
@@ -259,8 +264,8 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'outgoing_letter_edit', 'type' => 'outgoing_letter', 'parent' => 0],
             ['id'    => $i++,  'title' => 'outgoing_letter_show', 'type' => 'outgoing_letter', 'parent' => 0],
             ['id'    => $i++,  'title' => 'outgoing_letter_delete', 'type' => 'outgoing_letter', 'parent' => 0],
-            ['id'    => $i++,  'title' => 'outgoing_letter_access', 'type' => 'outgoing_letter', 'parent' => 0],  
-            
+            ['id'    => $i++,  'title' => 'outgoing_letter_access', 'type' => 'outgoing_letter', 'parent' => 0],
+
             ['id'    => $i++,  'title' => 'country_managment_access', 'type' => 'region.city.district', 'parent' => 1],
             ['id'    => $i++,  'title' => 'region_create', 'type' => 'region', 'parent' => 0],
             ['id'    => $i++,  'title' => 'region_edit', 'type' => 'region', 'parent' => 0],
@@ -287,8 +292,8 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'marital_status_create', 'type' => 'marital_status', 'parent' => 0],
             ['id'    => $i++,  'title' => 'marital_status_edit', 'type' => 'marital_status', 'parent' => 0],
             ['id'    => $i++,  'title' => 'marital_status_show', 'type' => 'marital_status', 'parent' => 0],
-            ['id'    => $i++,  'title' => 'marital_status_delete', 'type' => 'marital_status', 'parent' => 0],    
-            ['id'    => $i++,  'title' => 'marital_status_access', 'type' => 'marital_status', 'parent' => 0], 
+            ['id'    => $i++,  'title' => 'marital_status_delete', 'type' => 'marital_status', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'marital_status_access', 'type' => 'marital_status', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_category_create', 'type' => 'beneficiary_category', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_category_edit', 'type' => 'beneficiary_category', 'parent' => 0],
             ['id'    => $i++,  'title' => 'beneficiary_category_show', 'type' => 'beneficiary_category', 'parent' => 0],
@@ -343,8 +348,8 @@ class PermissionsTableSeeder extends Seeder
             ['id'    => $i++,  'title' => 'consultation_type_edit', 'type' => 'consultation_type', 'parent' => 0],
             ['id'    => $i++,  'title' => 'consultation_type_show', 'type' => 'consultation_type', 'parent' => 0],
             ['id'    => $i++,  'title' => 'consultation_type_delete', 'type' => 'consultation_type', 'parent' => 0],
-            ['id'    => $i++,  'title' => 'consultation_type_access', 'type' => 'consultation_type', 'parent' => 0], 
-            ['id'    => $i++,  'title' => 'setting_edit', 'type' => 'setting', 'parent' => 0], 
+            ['id'    => $i++,  'title' => 'consultation_type_access', 'type' => 'consultation_type', 'parent' => 0],
+            ['id'    => $i++,  'title' => 'setting_edit', 'type' => 'setting', 'parent' => 0],
             ['id'    => $i++,  'title' => 'setting_access', 'type' => 'setting', 'parent' => 0],
         ];
 

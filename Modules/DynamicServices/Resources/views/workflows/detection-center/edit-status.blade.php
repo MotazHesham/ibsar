@@ -11,6 +11,7 @@
         $doctorOutcomes = $workflowContext['doctorOutcomes'] ?? [];
         $visualAids = $workflowContext['visualAids'] ?? [];
         $availableStockItems = $workflowContext['availableStockItems'] ?? collect();
+        $financial = $workflowContext['financial'] ?? [];
     @endphp
 
     <div class="alert alert-info py-2 mb-3">
@@ -66,6 +67,27 @@
                 @include('utilities.form.text', ['name' => 'otp_code', 'label' => 'رمز OTP', 'isRequired' => true, 'grid' => 'col-md-6', 'attributes' => 'maxlength="6"'])
             @endif
 
+            @if ($currentStep === 'financial_approval')
+                <div class="card mb-3">
+                    <div class="card-header py-2"><h6 class="mb-0">بيانات إيصال السداد</h6></div>
+                    <div class="card-body">
+                        @if (!empty($contribution['amount']))
+                            <p class="mb-2"><strong>قيمة المساهمة:</strong> {{ $contribution['amount'] }}</p>
+                        @endif
+                        @if (!empty($financial['receipt_submitted_at']))
+                            <p class="mb-2 text-success"><strong>تاريخ رفع الإيصال:</strong> {{ $financial['receipt_submitted_at'] }}</p>
+                            @if (!empty($financial['receipt_notes']))
+                                <p class="mb-0"><strong>ملاحظات الإيصال:</strong> {{ $financial['receipt_notes'] }}</p>
+                            @else
+                                <p class="mb-0 text-muted">لا توجد ملاحظات.</p>
+                            @endif
+                        @else
+                            <div class="alert alert-warning mb-0">لم يرفع المستفيد الإيصال بعد.</div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             <div id="workflow-reject-reason-wrapper" class="mb-3" style="display:none;">
                 @include('utilities.form.textarea', ['name' => 'reason', 'label' => 'السبب', 'isRequired' => false])
             </div>
@@ -80,6 +102,11 @@
             </div>
         </form>
     @endif
+
+    @include('dynamicservices::workflows.partials.history', [
+        'dynamicServiceOrder' => $dynamicServiceOrder,
+        'workflowContext' => $workflowContext,
+    ])
 @endif
 
 @section('scripts') @parent

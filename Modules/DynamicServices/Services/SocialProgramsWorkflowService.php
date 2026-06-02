@@ -5,6 +5,7 @@ namespace Modules\DynamicServices\Services;
 use App\Models\BeneficiaryOrder;
 use App\Models\UserAlert;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Modules\DynamicServices\Models\DynamicService;
 use Modules\DynamicServices\Models\DynamicServiceOrder;
 use Modules\DynamicServices\Workflows\SocialProgramsWorkflowHandler;
@@ -35,9 +36,89 @@ class SocialProgramsWorkflowService
     {
         return DynamicServiceOrder::query()
             ->where('dynamic_service_id', $service->id)
-            ->whereHas('beneficiaryOrder', fn ($q) => $q->where('accept_status', 'yes'))
-            ->where('workflow_step', '!=', 'rejected')
+            ->whereIn('workflow_step', [
+                SocialProgramsWorkflowHandler::STEP_SEND_PROGRAM_DETAILS,
+                SocialProgramsWorkflowHandler::STEP_COMPLETED,
+            ])
             ->count();
+    }
+
+    public function getProgramViewData(DynamicService $service): array
+    {
+        $targetCount = $this->getTargetCount($service);
+        $registeredCount = $this->countRegistrations($service);
+
+        $pendingApproval = DynamicServiceOrder::query()
+            ->where('dynamic_service_id', $service->id)
+            ->where('workflow_step', SocialProgramsWorkflowHandler::STEP_INITIAL_APPROVAL)
+            ->with('beneficiaryOrder.beneficiary.user')
+            ->orderBy('created_at')
+            ->get();
+
+        $waitingForDetails = DynamicServiceOrder::query()
+            ->where('dynamic_service_id', $service->id)
+            ->where('workflow_step', SocialProgramsWorkflowHandler::STEP_SEND_PROGRAM_DETAILS)
+            ->count();
+
+        $completedOrder = DynamicServiceOrder::query()
+            ->where('dynamic_service_id', $service->id)
+            ->where('workflow_step', SocialProgramsWorkflowHandler::STEP_COMPLETED)
+            ->first();
+
+        $programDetails = $completedOrder?->workflow_data['program_details'] ?? [];
+
+        return [
+            'targetCount' => $targetCount,
+            'registeredCount' => $registeredCount,
+            'pendingApproval' => $pendingApproval,
+            'waitingForDetails' => $waitingForDetails,
+            'canSendDetails' => $targetCount > 0 && $registeredCount >= $targetCount && $waitingForDetails > 0,
+            'isProgramCompleted' => $waitingForDetails === 0 && $pendingApproval->isEmpty() && $completedOrder !== null,
+            'programDetails' => $programDetails,
+        ];
+    }
+
+    public function processProgramAction(DynamicService $service, string $action, array $data): void
+    {
+        if ($action === SocialProgramsWorkflowHandler::ACTION_SEND_DETAILS) {
+            $this->sendProgramDetails($service, $data);
+
+            return;
+        }
+
+        $beneficiaryOrderId = $data['beneficiary_order_id'] ?? null;
+        if (! $beneficiaryOrderId) {
+            throw ValidationException::withMessages([
+                'beneficiary_order_id' => 'يجب تحديد طلب المستفيد',
+            ]);
+        }
+
+        $beneficiaryOrder = BeneficiaryOrder::query()
+            ->where('id', $beneficiaryOrderId)
+            ->where('service_type', 'dynamic_' . $service->id)
+            ->firstOrFail();
+
+        app(DynamicOrderWorkflowService::class)->processAction($beneficiaryOrder, $action, $data);
+    }
+
+    public function sendProgramDetails(DynamicService $service, array $data): void
+    {
+        $targetCount = $this->getTargetCount($service);
+        $registeredCount = $this->countRegistrations($service);
+
+        if ($targetCount > 0 && $registeredCount < $targetCount) {
+            throw ValidationException::withMessages([
+                'program_details_message' => "لم يكتمل العدد المستهدف بعد ({$registeredCount}/{$targetCount})",
+            ]);
+        }
+
+        $validated = $this->validateAndExtract(
+            SocialProgramsWorkflowHandler::STEP_SEND_PROGRAM_DETAILS,
+            SocialProgramsWorkflowHandler::ACTION_SEND_DETAILS,
+            $data
+        );
+
+        app(SocialProgramsWorkflowHandler::class)->sendProgramDetails($service, $validated);
     }
 
     public function validateAndExtract(string $step, string $action, array $data): array

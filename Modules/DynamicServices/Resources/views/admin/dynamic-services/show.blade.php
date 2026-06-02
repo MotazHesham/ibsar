@@ -48,6 +48,14 @@
                                 </p>
                             </div>
                         </div>
+                        @if ($dynamicService->category === 'social_programs')
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">العدد المستهدف</label>
+                                    <p class="form-control-static">{{ $dynamicService->service_type ?: '—' }}</p>
+                                </div>
+                            </div>
+                        @endif
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label
@@ -73,6 +81,13 @@
         </div>
     </div>
 
+
+    @if ($dynamicService->category === 'social_programs' && !empty($programWorkflow))
+        @include('dynamicservices::admin.dynamic-services.partials.social-program-workflow', [
+            'dynamicService' => $dynamicService,
+            'programWorkflow' => $programWorkflow,
+        ])
+    @endif
 
     <!-- Beneficiaries Requests Section -->
     <div class="row mt-4">

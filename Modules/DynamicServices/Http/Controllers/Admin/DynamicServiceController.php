@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\MediaUploadingTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Modules\DynamicServices\Http\Requests\DestroyDynamicServiceRequest;
 use Modules\DynamicServices\Http\Requests\MassDestroyDynamicServiceRequest;
 use Modules\DynamicServices\Http\Requests\StoreDynamicServiceRequest;
 use Modules\DynamicServices\Http\Requests\UpdateDynamicServiceRequest;
 use Modules\DynamicServices\Models\DynamicService;
 use Modules\DynamicServices\Models\DynamicServiceOrder;
+use Modules\DynamicServices\Services\SocialProgramsWorkflowService;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Symfony\Component\HttpFoundation\Response;
 use Yajra\DataTables\Facades\DataTables;
@@ -84,7 +86,14 @@ class DynamicServiceController extends Controller
 
     public function store(StoreDynamicServiceRequest $request)
     {
-        $dynamicService = DynamicService::create($request->all());
+        $data = $request->validated();
+        unset($data['target_count']);
+
+        if ($request->category === DynamicService::CATEGORY_SOCIAL_PROGRAMS) {
+            $data['service_type'] = (string) $request->input('target_count');
+        }
+
+        $dynamicService = DynamicService::create($data);
 
         if ($request->input('icon', false)) {
             $dynamicService->addMedia(storage_path('tmp/uploads/' . basename($request->input('icon'))))->toMediaCollection('icon');
@@ -110,7 +119,12 @@ class DynamicServiceController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('dynamicservices::admin.dynamic-services.show', compact('dynamicService', 'dynamicServiceOrders'));
+        $programWorkflow = null;
+        if ($dynamicService->category === DynamicService::CATEGORY_SOCIAL_PROGRAMS) {
+            $programWorkflow = app(SocialProgramsWorkflowService::class)->getProgramViewData($dynamicService);
+        }
+
+        return view('dynamicservices::admin.dynamic-services.show', compact('dynamicService', 'dynamicServiceOrders', 'programWorkflow'));
     }
 
     public function edit(DynamicService $dynamicService)
@@ -192,5 +206,35 @@ class DynamicServiceController extends Controller
 
         return redirect()->route('admin.dynamic-services.show', $dynamicService->id)
             ->with('success', 'تم حفظ جدول اللقاءات بنجاح');
+    }
+
+    public function processWorkflow(Request $request, DynamicService $dynamicService)
+    {
+        abort_if(Gate::denies('dynamic_service_edit'), Response::HTTP_FORBIDDEN, '403 Forbidden');
+
+        if ($dynamicService->category !== DynamicService::CATEGORY_SOCIAL_PROGRAMS) {
+            abort(404);
+        }
+
+        $request->validate([
+            'workflow_action' => 'required|string',
+            'beneficiary_order_id' => 'nullable|integer|exists:beneficiary_orders,id',
+            'reason' => 'nullable|string|max:2000',
+            'program_details_message' => 'nullable|string|max:5000',
+        ]);
+
+        try {
+            app(SocialProgramsWorkflowService::class)->processProgramAction(
+                $dynamicService,
+                $request->input('workflow_action'),
+                $request->only(['beneficiary_order_id', 'reason', 'program_details_message'])
+            );
+        } catch (ValidationException $e) {
+            return redirect()->route('admin.dynamic-services.show', $dynamicService)
+                ->withErrors($e->errors());
+        }
+
+        return redirect()->route('admin.dynamic-services.show', $dynamicService)
+            ->with('success', 'تم تحديث مسار البرنامج بنجاح');
     }
 }

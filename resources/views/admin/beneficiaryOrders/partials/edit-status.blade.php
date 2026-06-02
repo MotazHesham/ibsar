@@ -17,6 +17,9 @@
                 $isDynamicService = \Modules\DynamicServices\Helpers\DynamicServiceHelper::isDynamicService(
                     $beneficiaryOrder->service_type,
                 );
+                $isSocialProgram = $isDynamicService
+                    && !empty($workflowContext)
+                    && ($workflowContext['service']->category ?? null) === 'social_programs';
             @endphp
             @if ($beneficiaryOrder->done)
                 <div class="text-center p-4">
@@ -42,7 +45,14 @@
                     @endif
                 </div>
             @else
-                @if (!$beneficiaryOrder->accept_status)
+                @if ($isSocialProgram)
+                    @include($workflowContext['handler']->viewName(), [
+                        'beneficiaryOrder' => $beneficiaryOrder,
+                        'workflowContext' => $workflowContext,
+                        'statuses' => $statuses ?? [],
+                        'specialists' => $specialists ?? [],
+                    ])
+                @elseif (!$beneficiaryOrder->accept_status)
                     <form action="{{ route('admin.beneficiary-orders.update-status', $beneficiaryOrder) }}"
                         class="p-3" method="POST">
                         @csrf

@@ -17,7 +17,7 @@ class DynamicServiceViewHelper
             $label = $field['label'] ?? 'Field ' . $field['id'];
             $value = $field['value'] ?? '';
             $type = $field['type'] ?? 'text';
-            $formattedValue = self::formatFieldValue($value, $type);
+            $formattedValue = self::formatFieldValue($value, $type, $field);
 
             $html .= '<tr>';
             $html .= '<td><strong>' . htmlspecialchars($label) . '</strong></td>';
@@ -43,7 +43,7 @@ class DynamicServiceViewHelper
             $value = $field['value'] ?? '';
             $type = $field['type'] ?? 'text';
             $required = $field['required'] ?? false;
-            $formattedValue = self::formatFieldValue($value, $type);
+            $formattedValue = self::formatFieldValue($value, $type, $field);
 
             $html .= '<div class="col-md-6 mb-3">';
             $html .= '<div class="card">';
@@ -82,7 +82,7 @@ class DynamicServiceViewHelper
         return $value;
     }
 
-    public static function formatFieldValue($value, $type)
+    public static function formatFieldValue($value, $type, array $field = [])
     {
         if (empty($value)) {
             return '<span class="text-muted">Not provided</span>';
@@ -103,6 +103,10 @@ class DynamicServiceViewHelper
             case 'radio':
             case 'checkbox':
                 return '<span class="badge bg-primary">' . htmlspecialchars($value) . '</span>';
+            case 'file':
+                $displayName = $field['original_name'] ?? $field['file_name'] ?? basename(parse_url((string) $value, PHP_URL_PATH) ?: '');
+
+                return '<a href="' . htmlspecialchars((string) $value) . '" target="_blank" class="btn btn-sm btn-outline-primary"><i class="ri-attachment-line me-1"></i>' . htmlspecialchars($displayName) . '</a>';
             default:
                 return htmlspecialchars($value);
         }

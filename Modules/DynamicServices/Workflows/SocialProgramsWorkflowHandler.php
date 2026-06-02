@@ -3,6 +3,7 @@
 namespace Modules\DynamicServices\Workflows;
 
 use App\Models\BeneficiaryOrder;
+use App\Services\WorkflowFinanceRequestService;
 use Modules\DynamicServices\Models\DynamicService;
 use Modules\DynamicServices\Models\DynamicServiceOrder;
 use Modules\DynamicServices\Services\SocialProgramsWorkflowService;
@@ -16,7 +17,8 @@ class SocialProgramsWorkflowHandler extends AbstractWorkflowHandler
     public const ACTION_SEND_DETAILS = 'send_program_details';
 
     public function __construct(
-        protected SocialProgramsWorkflowService $programsService
+        protected SocialProgramsWorkflowService $programsService,
+        protected WorkflowFinanceRequestService $financeRequestService,
     ) {
     }
 
@@ -49,23 +51,7 @@ class SocialProgramsWorkflowHandler extends AbstractWorkflowHandler
         DynamicServiceOrder $dynamicServiceOrder,
         DynamicService $service
     ): array {
-        if ($this->isCompleted($dynamicServiceOrder) || $this->isRejected($dynamicServiceOrder)) {
-            return [];
-        }
-
-        return match ($dynamicServiceOrder->workflow_step) {
-            self::STEP_INITIAL_APPROVAL => [
-                ['key' => self::ACTION_APPROVE_PROJECTS, 'label' => 'يعتمد (المشاريع)', 'type' => 'success'],
-                ['key' => self::ACTION_REJECT, 'label' => 'لا يعتمد', 'type' => 'danger', 'requires_reason' => true],
-            ],
-            self::STEP_SEND_PROGRAM_DETAILS => [[
-                'key' => self::ACTION_SEND_DETAILS,
-                'label' => 'إرسال تفاصيل البرنامج للمستفيدين',
-                'type' => 'primary',
-                'form_submit' => true,
-            ]],
-            default => [],
-        };
+        return [];
     }
 
     public function processAction(
@@ -122,6 +108,16 @@ class SocialProgramsWorkflowHandler extends AbstractWorkflowHandler
             $beneficiaryOrder,
             'تم اعتماد طلبكم في البرنامج الاجتماعي. سيتم إرسال تفاصيل البرنامج عند اكتمال العدد المستهدف.'
         );
+
+        $this->financeRequestService->queue(
+            beneficiaryOrder: $beneficiaryOrder,
+            workflowCategory: DynamicService::CATEGORY_SOCIAL_PROGRAMS,
+            workflowStep: self::STEP_INITIAL_APPROVAL,
+            triggerAction: self::ACTION_APPROVE_PROJECTS,
+            title: 'تسجيل مستفيد — برنامج: ' . $service->title,
+            source: $dynamicServiceOrder,
+            reference: $service,
+        );
     }
 
     protected function handleSendDetails(
@@ -130,12 +126,33 @@ class SocialProgramsWorkflowHandler extends AbstractWorkflowHandler
         DynamicService $service,
         array $validated
     ): void {
+        $this->sendProgramDetails($service, $validated);
+    }
+
+    public function sendProgramDetails(DynamicService $service, array $validated): void
+    {
         $message = $validated['program_details_message'] ?? '';
         $details = $validated['program_details'] ?? ['message' => $message, 'sent_at' => now()->toDateTimeString()];
 
-        $this->programsService->mergeWorkflowData($dynamicServiceOrder, ['program_details' => $details]);
-        $this->programsService->notifyAllProgramBeneficiaries($service, $message);
-        $this->complete($beneficiaryOrder, $dynamicServiceOrder);
-        $this->appendHistory($dynamicServiceOrder, self::STEP_SEND_PROGRAM_DETAILS, self::ACTION_SEND_DETAILS, $details);
+        $orders = DynamicServiceOrder::query()
+            ->where('dynamic_service_id', $service->id)
+            ->where('workflow_step', self::STEP_SEND_PROGRAM_DETAILS)
+            ->with('beneficiaryOrder')
+            ->get();
+
+        foreach ($orders as $dynamicServiceOrder) {
+            $beneficiaryOrder = $dynamicServiceOrder->beneficiaryOrder;
+            if (! $beneficiaryOrder) {
+                continue;
+            }
+
+            $this->programsService->mergeWorkflowData($dynamicServiceOrder, ['program_details' => $details]);
+            $this->complete($beneficiaryOrder, $dynamicServiceOrder);
+            $this->appendHistory($dynamicServiceOrder, self::STEP_SEND_PROGRAM_DETAILS, self::ACTION_SEND_DETAILS, $details);
+        }
+
+        if ($orders->isNotEmpty()) {
+            $this->programsService->notifyAllProgramBeneficiaries($service, $message);
+        }
     }
 }

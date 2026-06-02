@@ -224,13 +224,34 @@ class DetectionCenterWorkflowService
             'receipt_notes' => 'nullable|string|max:2000',
         ])->validate();
 
+        $dynamicServiceOrder->refresh();
+        $financial = $dynamicServiceOrder->workflow_data['financial'] ?? [];
+
         $this->mergeWorkflowData($dynamicServiceOrder, [
-            'financial' => array_merge($dynamicServiceOrder->workflow_data['financial'] ?? [], [
+            'financial' => array_merge($financial, [
                 'receipt_submitted_at' => now()->toDateTimeString(),
                 'receipt_notes' => $validated['receipt_notes'] ?? null,
             ]),
         ]);
 
+        $this->appendReceiptHistory($dynamicServiceOrder, $validated['receipt_notes'] ?? null);
+
         $this->notifyBeneficiaryUserAlert($beneficiaryOrder, 'تم استلام إيصال السداد. جاري مراجعته من المالية.');
+    }
+
+    protected function appendReceiptHistory(DynamicServiceOrder $dynamicServiceOrder, ?string $notes): void
+    {
+        $dynamicServiceOrder->refresh();
+        $workflowData = $dynamicServiceOrder->workflow_data ?? [];
+        $history = $workflowData['history'] ?? [];
+        $history[] = [
+            'step' => DetectionCenterWorkflowHandler::STEP_FINANCIAL_APPROVAL,
+            'action' => 'beneficiary_receipt',
+            'at' => now()->toDateTimeString(),
+            'by' => auth()->id(),
+            'notes' => $notes,
+        ];
+        $workflowData['history'] = $history;
+        $dynamicServiceOrder->update(['workflow_data' => $workflowData]);
     }
 }

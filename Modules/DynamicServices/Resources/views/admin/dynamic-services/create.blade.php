@@ -97,11 +97,11 @@
                             </div>
                             <div class="col-md-6 mb-3" id="social-programs-target-container" style="display: none;">
                                 @include('utilities.form.text', [
-                                    'name' => 'service_type',
+                                    'name' => 'target_count',
                                     'label' => 'العدد المستهدف للبرنامج',
                                     'isRequired' => true,
                                     'grid' => 'col-md-12',
-                                    'value' => old('service_type', ''),
+                                    'value' => old('target_count', ''),
                                     'attributes' => 'type="number" min="1"',
                                 ])
                             </div>
@@ -173,6 +173,7 @@
                         <option value="date">{{ trans('cruds.dynamicService.fields.field_types.date') }}</option>
                         <option value="time">{{ trans('cruds.dynamicService.fields.field_types.time') }}</option>
                         <option value="number">{{ trans('cruds.dynamicService.fields.field_types.number') }}</option>
+                        <option value="file">{{ trans('cruds.dynamicService.fields.field_types.file') }}</option>
                     </select>
                 </div>
                 <div class="col-md-6">
@@ -262,18 +263,19 @@
             }
 
             const category = categorySelect.value;
+            const containers = [
+                { el: trainingContainer, active: category === 'training' },
+                { el: assistanceContainer, active: category === 'assistance' },
+                { el: socialTargetContainer, active: category === 'social_programs' },
+            ];
 
-            if (trainingContainer) {
-                trainingContainer.style.display = category === 'training' ? 'block' : 'none';
-            }
-
-            if (assistanceContainer) {
-                assistanceContainer.style.display = category === 'assistance' ? 'block' : 'none';
-            }
-
-            if (socialTargetContainer) {
-                socialTargetContainer.style.display = category === 'social_programs' ? 'block' : 'none';
-            }
+            containers.forEach(({ el, active }) => {
+                if (!el) return;
+                el.style.display = active ? 'block' : 'none';
+                el.querySelectorAll('input, select, textarea').forEach(input => {
+                    input.disabled = !active;
+                });
+            });
         }
 
         document.addEventListener('DOMContentLoaded', function() {

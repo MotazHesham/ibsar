@@ -78,13 +78,13 @@ class BeneficiaryOrderService
                 'attend_same_course_before' => $request->prev_courses,
                 'note' => $request->note,
             ]);
-        }elseif($request->service_type == 'loan'){
+        } elseif ($request->service_type == 'loan') {
             $commonData['service_id'] = $request->service_id;
             $beneficiaryOrder = BeneficiaryOrder::create($commonData);
 
-            if($request->has('contacts')){
+            if ($request->has('contacts')) {
                 $contacts = json_encode($request->contacts, JSON_UNESCAPED_UNICODE);
-            }else{
+            } else {
                 $contacts = null;
             }
 
@@ -92,7 +92,7 @@ class BeneficiaryOrderService
 
             $serviceLoan = ServiceLoan::create([
                 'group_name' => $request->group_name,
-                'beneficiary_order_id' => $beneficiaryOrder->id, 
+                'beneficiary_order_id' => $beneficiaryOrder->id,
                 'kafil_name' => $request->kafil_name,
                 'kafil_identity_num' => $request->kafil_identity_num,
                 'accommodation_type_id' => $request->accommodation_type_id,
@@ -110,19 +110,19 @@ class BeneficiaryOrderService
                 'kafil_work_name' => $request->kafil_work_name,
                 'kafil_mail_box' => $request->kafil_mail_box,
                 'kafil_postal_code' => $request->kafil_postal_code,
-                
+
                 'amount' => $loan->amount,
                 'installment' => $loan->installment,
                 'months' => $loan->months,
 
                 'contacts' => $contacts,
             ]);
-            
+
             ServiceLoanMember::create([
-                'service_loan_id' => $serviceLoan->id, 
+                'service_loan_id' => $serviceLoan->id,
                 'beneficiary_id' => $beneficiary->id,
                 'name' => $user->name,
-                'identity_number' => $user->identity_num, 
+                'identity_number' => $user->identity_num,
                 'member_position' => 'responsible',
                 'status' => 'approved',
                 'project_type' => $request->project_type,
@@ -142,12 +142,12 @@ class BeneficiaryOrderService
                 'loan_id' => $request->loan_id,
             ]);
 
-            if($request->has('members')){
-                foreach($request->members as $member){
+            if ($request->has('members')) {
+                foreach ($request->members as $member) {
                     ServiceLoanMember::create([
-                        'service_loan_id' => $serviceLoan->id, 
+                        'service_loan_id' => $serviceLoan->id,
                         'name' => $member['name'],
-                        'identity_number' => $member['identity_number'], 
+                        'identity_number' => $member['identity_number'],
                         'member_position' => 'member',
                     ]);
                 }
@@ -158,38 +158,52 @@ class BeneficiaryOrderService
             $beneficiaryOrder = BeneficiaryOrder::create($commonData);
 
             $dynamicService = DynamicService::find($dynamicServiceId);
-            
+
             // Collect dynamic field data with metadata
             $fieldData = [];
             if ($dynamicService && $dynamicService->form_fields) {
                 $formFields = json_decode($dynamicService->form_fields, true);
-                
+
                 foreach ($formFields as $field) {
                     $fieldId = $field['id'];
                     $fieldKey = 'dynamic_field_' . $fieldId;
-                    
-                    if ($request->has($fieldKey)) {
-                        $fieldData[] = [
-                            'id' => $fieldId,
-                            'label' => $field['label'] ?? '',
-                            'type' => $field['type'] ?? 'text',
-                            'required' => $field['required'] ?? false,
-                            'value' => $request->input($fieldKey),
-                            'options' => $field['options'] ?? null,
-                            'validation' => $field['validation'] ?? null,
-                            'grid' => $field['grid'] ?? 'col-md-6',
-                            'attributes' => $field['attributes'] ?? null,
-                        ];
+                    $fieldType = $field['type'] ?? 'text';
+
+                    if (!$request->filled($fieldKey)) {
+                        continue;
                     }
+
+                    $fieldEntry = [
+                        'id' => $fieldId,
+                        'label' => $field['label'] ?? '',
+                        'type' => $fieldType,
+                        'required' => $field['required'] ?? false,
+                        'value' => $request->input($fieldKey),
+                        'options' => $field['options'] ?? null,
+                        'validation' => $field['validation'] ?? null,
+                        'grid' => $field['grid'] ?? 'col-md-6',
+                        'attributes' => $field['attributes'] ?? null,
+                    ];
+
+                    if ($fieldType === 'file' && $request->filled($fieldKey . '_original_name')) {
+                        $fieldEntry['original_name'] = $request->input($fieldKey . '_original_name');
+                    }
+
+                    $fieldData[] = $fieldEntry;
                 }
             }
-            
+
             // Create dynamic service order record
             $dynamicServiceOrder = DynamicServiceOrder::create([
                 'beneficiary_order_id' => $beneficiaryOrder->id,
                 'dynamic_service_id' => $dynamicServiceId,
                 'field_data' => $fieldData,
             ]);
+
+            $fieldData = $this->attachDynamicFieldFiles($dynamicServiceOrder, $fieldData);
+            if (!empty($fieldData)) {
+                $dynamicServiceOrder->update(['field_data' => $fieldData]);
+            }
 
             if ($dynamicService) {
                 app(\Modules\DynamicServices\Services\DynamicOrderWorkflowService::class)
@@ -205,5 +219,32 @@ class BeneficiaryOrderService
             Media::whereIn('id', $media)->update(['model_id' => $beneficiaryOrder->id]);
         }
         return $beneficiaryOrder;
+    }
+
+    protected function attachDynamicFieldFiles(DynamicServiceOrder $dynamicServiceOrder, array $fieldData): array
+    {
+        foreach ($fieldData as &$field) {
+            if (($field['type'] ?? '') !== 'file' || empty($field['value'])) {
+                continue;
+            }
+
+            $tmpFileName = basename($field['value']);
+            $tmpPath = storage_path('tmp/uploads/' . $tmpFileName);
+
+            if (!is_file($tmpPath)) {
+                continue;
+            }
+
+            $media = $dynamicServiceOrder->addMedia($tmpPath)
+                ->usingFileName($tmpFileName)
+                ->toMediaCollection('dynamic_field_' . $field['id']);
+
+            $field['value'] = $media->getUrl();
+            $field['media_id'] = $media->id;
+            $field['file_name'] = $media->file_name;
+        }
+        unset($field);
+
+        return $fieldData;
     }
 }

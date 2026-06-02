@@ -1,7 +1,11 @@
 <div class="form-group mb-3 {{ $grid ?? '' }}">
     <div class="mail-compose">
         <label class="form-label" for="{{ $name }}">
-            {{ trans($label) }}
+            @if (!empty($rawLabel))
+                {{ $label }}
+            @else
+                {{ trans($label) }}
+            @endif
             @if ($isRequired)
                 <span class="text-danger">*</span>
             @endif

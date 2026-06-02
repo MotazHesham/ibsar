@@ -47,4 +47,9 @@
             </div>
         </form>
     @endif
+
+    @include('dynamicservices::workflows.partials.history', [
+        'dynamicServiceOrder' => $dynamicServiceOrder,
+        'workflowContext' => $workflowContext,
+    ])
 @endif
