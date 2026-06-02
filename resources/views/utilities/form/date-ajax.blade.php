@@ -1,7 +1,7 @@
 <div class="form-group mb-3 {{ $grid ?? '' }}">
     <label class="form-label" for="{{ $name }}">
         {{ trans($label) }}
-        @if(isset($hijri) && $hijri == true)
+        @if (isset($hijri) && $hijri == true)
             <span class="text-muted">({{ trans('global.hijri') }})</span>
         @endif
         @if ($isRequired)
@@ -21,11 +21,11 @@
             {{ $errors->first($name) }}
         </div>
     @endif
-    <span class="help-block">{{ trans($label . '_helper') }}</span>
+    <span class="help-block">{{ isset($helperBlock) ? trans($helperBlock) : trans($label . '_helper') }}</span>
 </div>
 
 <script>
-    @if(isset($hijri) && $hijri == true)
+    @if (isset($hijri) && $hijri == true)
         initializeHijriDatePicker('{{ $id }}');
     @else
         initializeFlatpickr('{{ $id }}');

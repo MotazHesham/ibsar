@@ -21,18 +21,18 @@ class StoreBeneficiaryOrderRequest extends FormRequest
                 'required',
                 'integer',
             ],
-            'title' => [ 
+            'title' => [
                 'max:' . config('panel.max_characters_short'),
                 'nullable'
-            ], 
+            ],
             'description' => [
-                'required',
-            ], 
+                'nullable',
+            ],
             'service_type' => [
-                'required', 
-            ], 
+                'required',
+            ],
         ];
-        if($this->service_type == 'consultant'){
+        if ($this->service_type == 'consultant') {
             $rules['consultant_id'] = [
                 'required',
                 'integer',
@@ -51,12 +51,12 @@ class StoreBeneficiaryOrderRequest extends FormRequest
             $rules['appointment_time'] = [
                 'required',
             ];
-        }elseif($this->service_type == 'financial' || $this->service_type == 'social'){
+        } elseif ($this->service_type == 'financial' || $this->service_type == 'social') {
             $rules['service_id'] = [
                 'required',
                 'integer',
             ];
-        }elseif($this->service_type == 'course'){
+        } elseif ($this->service_type == 'course') {
             $rules['course_id'] = [
                 'required',
                 'integer',
@@ -85,15 +85,15 @@ class StoreBeneficiaryOrderRequest extends FormRequest
             $rules['note'] = [
                 'required',
             ];
-        }elseif($this->service_type == 'loan'){
+        } elseif ($this->service_type == 'loan') {
             $rules['service_id'] = [
                 'required',
                 'integer',
             ];
-            $rules['street'] = [ 
+            $rules['street'] = [
                 'max:' . config('panel.max_characters_short'),
             ];
-            $rules['project_start_date'] = [ 
+            $rules['project_start_date'] = [
                 'date_format:' . config('panel.date_format'),
             ];
             $rules['project_years_of_experience'] = [
@@ -103,67 +103,67 @@ class StoreBeneficiaryOrderRequest extends FormRequest
                 'required',
                 'integer',
             ];
-            $rules['project_short_description'] = [ 
+            $rules['project_short_description'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
-            $rules['project_short_description'] = [ 
+            ];
+            $rules['project_short_description'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
-            $rules['purpose_of_loan'] = [ 
+            ];
+            $rules['purpose_of_loan'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
-            $rules['previous_loan_number'] = [ 
+            ];
+            $rules['previous_loan_number'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
+            ];
 
-            $rules['kafil_name'] = [ 
+            $rules['kafil_name'] = [
                 'max:' . config('panel.max_characters_short'),
                 'regex:/[a-zA-Z]/'
-            ]; 
-            $rules['kafil_identity_num'] = [ 
-                'max:' . config('panel.max_characters_short'), 
+            ];
+            $rules['kafil_identity_num'] = [
+                'max:' . config('panel.max_characters_short'),
                 config('panel.identity_validation'),
-            ]; 
-            $rules['kafil_street'] = [ 
+            ];
+            $rules['kafil_street'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
-            $rules['kafil_nearby_address'] = [ 
+            ];
+            $rules['kafil_nearby_address'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
-            $rules['kafil_phone'] = [  
+            ];
+            $rules['kafil_phone'] = [
                 'numeric',
-            ]; 
-            $rules['kafil_phone2'] = [  
+            ];
+            $rules['kafil_phone2'] = [
                 'numeric'
-            ]; 
-            $rules['kafil_work_phone'] = [  
+            ];
+            $rules['kafil_work_phone'] = [
                 'numeric'
-            ]; 
-            $rules['kafil_work_address'] = [ 
+            ];
+            $rules['kafil_work_address'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
-            $rules['kafil_email'] = [ 
+            ];
+            $rules['kafil_email'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
-            $rules['kafil_work_name'] = [ 
+            ];
+            $rules['kafil_work_name'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
-            $rules['kafil_mail_box'] = [ 
+            ];
+            $rules['kafil_mail_box'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
-            $rules['kafil_postal_code'] = [ 
+            ];
+            $rules['kafil_postal_code'] = [
                 'max:' . config('panel.max_characters_short'),
-            ]; 
-            $rules['group_name'] = [ 
+            ];
+            $rules['group_name'] = [
                 'nullable',
                 'max:' . config('panel.max_characters_short'),
                 'unique:service_loans,group_name',
             ];
-            if($this->has('members')){
+            if ($this->has('members')) {
                 $rules['members'] = 'array';
-                $rules['members.*.name'] = 'required|string|max:' . config('panel.max_characters_short'); 
-                $rules['members.*.identity_number'] = 'required|'. config('panel.identity_validation'); 
-            }else if ($this->has('contacts')) {
+                $rules['members.*.name'] = 'required|string|max:' . config('panel.max_characters_short');
+                $rules['members.*.identity_number'] = 'required|' . config('panel.identity_validation');
+            } else if ($this->has('contacts')) {
                 $rules['contacts'] = 'array';
                 $rules['contacts.*.name'] = 'required|string|max:' . config('panel.max_characters_short');
                 $rules['contacts.*.family_relationship_id'] = 'nullable|integer|exists:family_relationships,id';
@@ -173,21 +173,21 @@ class StoreBeneficiaryOrderRequest extends FormRequest
             }
         } elseif (str_starts_with($this->service_type, 'dynamic_')) {
             // Dynamic service validation
-            $dynamicServiceId = \App\Helpers\DynamicServiceHelper::extractDynamicServiceId($this->service_type);
-            $dynamicService = \App\Models\DynamicService::find($dynamicServiceId); 
-            
+            $dynamicServiceId = \Modules\DynamicServices\Helpers\DynamicServiceHelper::extractDynamicServiceId($this->service_type);
+            $dynamicService = \Modules\DynamicServices\Models\DynamicService::find($dynamicServiceId);
+
             if ($dynamicService && $dynamicService->form_fields) {
                 $formFields = json_decode($dynamicService->form_fields, true);
                 foreach ($formFields as $field) {
                     $fieldName = 'dynamic_field_' . $field['id'];
                     $fieldRules = [];
-                    
+
                     if (isset($field['required']) && $field['required']) {
                         $fieldRules[] = 'required';
                     } else {
                         $fieldRules[] = 'nullable';
                     }
-                    
+
                     // Add field type validation
                     switch ($field['type'] ?? 'text') {
                         case 'email':
@@ -202,13 +202,16 @@ class StoreBeneficiaryOrderRequest extends FormRequest
                         case 'url':
                             $fieldRules[] = 'url';
                             break;
+                        case 'file':
+                            $fieldRules[] = 'string';
+                            break;
                     }
-                    
+
                     // Add custom validation if specified
                     if (isset($field['validation']) && $field['validation']) {
                         $fieldRules[] = $field['validation'];
                     }
-                    
+
                     $rules[$fieldName] = $fieldRules;
                 }
             }

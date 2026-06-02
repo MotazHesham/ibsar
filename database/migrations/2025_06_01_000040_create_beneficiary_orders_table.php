@@ -12,7 +12,7 @@ class CreateBeneficiaryOrdersTable extends Migration
             $table->bigIncrements('id');
             $table->string('service_type')->nullable();
             $table->string('title')->nullable();
-            $table->longText('description');
+            $table->longText('description')->nullable();
             $table->string('accept_status')->nullable();
             $table->longText('note')->nullable();
             $table->longText('refused_reason')->nullable();

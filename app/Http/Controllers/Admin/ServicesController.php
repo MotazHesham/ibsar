@@ -10,7 +10,7 @@ use App\Models\Building;
 use App\Models\Course;
 use App\Models\Service;
 use App\Models\Consultant;
-use App\Models\DynamicService;
+use Modules\DynamicServices\Models\DynamicService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;

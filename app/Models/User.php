@@ -37,7 +37,8 @@ class User extends Authenticatable implements HasMedia
         'beneficiary' => 'beneficiary',
     ];
     public const EMPLOYEE_TYPE_SELECT = [ 
-        'specialist'  => 'أخصائي/ة',  
+        'specialist'  => 'أخصائي/ة',
+        'trainer'     => 'مدرب/ة',
     ];
 
     protected $dates = [

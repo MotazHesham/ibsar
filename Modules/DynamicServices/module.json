@@ -1,0 +1,11 @@
+{
+    "name": "DynamicServices",
+    "alias": "dynamicservices",
+    "description": "Dynamic services CRUD, orders, and form builder",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\DynamicServices\\Providers\\DynamicServicesServiceProvider"
+    ],
+    "files": []
+}

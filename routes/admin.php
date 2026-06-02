@@ -29,11 +29,11 @@ Route::group(['middleware' => ['auth'], 'namespace' => 'Admin'], function () {
 
 Auth::routes();
 Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'middleware' => ['auth', 'staff']], function () {
-    
+
     Route::get('/', 'HomeController@index')->name('home');
     Route::post('updateStatuses', 'HomeController@updateStatuses')->name('updateStatuses');
     Route::post('/arrange', 'HomeController@arrange')->name('arrange');
-    Route::post('arrange/update', 'HomeController@updateArrange')->name('arrange.update'); 
+    Route::post('arrange/update', 'HomeController@updateArrange')->name('arrange.update');
 
     // Roles
     Route::delete('roles/destroy', 'RolesController@massDestroy')->name('roles.massDestroy');
@@ -68,12 +68,12 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
 
     // Marital Status
     Route::delete('marital-statuses/destroy', 'MaritalStatusController@massDestroy')->name('marital-statuses.massDestroy');
-    Route::resource('marital-statuses', 'MaritalStatusController'); 
+    Route::resource('marital-statuses', 'MaritalStatusController');
 
     // Beneficiary Categories
     Route::delete('beneficiary-categories/destroy', 'BeneficiaryCategoryController@massDestroy')->name('beneficiary-categories.massDestroy');
     Route::resource('beneficiary-categories', 'BeneficiaryCategoryController');
-    
+
     // Accommodation Entities
     Route::delete('accommodation-entities/destroy', 'AccommodationEntityController@massDestroy')->name('accommodation-entities.massDestroy');
     Route::resource('accommodation-entities', 'AccommodationEntityController');
@@ -110,14 +110,14 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     Route::get('beneficiaries/import', 'BeneficiaryImportController@showImportForm')->name('beneficiaries.import');
     Route::post('beneficiaries/import/upload', 'BeneficiaryImportController@uploadCsv')->name('beneficiaries.import.upload');
     Route::post('beneficiaries/import/process', 'BeneficiaryImportController@processImport')->name('beneficiaries.import.process');
-    
+
     // Beneficiaries
     Route::delete('beneficiaries/destroy', 'BeneficiariesController@massDestroy')->name('beneficiaries.massDestroy');
     Route::put('beneficiaries/update-status/{beneficiary}', 'BeneficiariesController@updateStatus')->name('beneficiaries.update-status');
     Route::put('beneficiaries/update-case-study/{beneficiary}', 'BeneficiariesController@updateCaseStudy')->name('beneficiaries.update-case-study');
     Route::get('beneficiaries/{beneficiary}/login-as', 'BeneficiariesController@loginAsBeneficiary')->name('beneficiaries.login-as');
     Route::resource('beneficiaries', 'BeneficiariesController');
-    
+
 
     // Disability Types
     Route::delete('disability-types/destroy', 'DisabilityTypesController@massDestroy')->name('disability-types.massDestroy');
@@ -234,13 +234,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     Route::get('services/services_by_type', 'ServicesController@servicesByType')->name('services.services_by_type');
     Route::resource('services', 'ServicesController');
 
-    // Dynamic Services
-    Route::post('dynamic-services/media', 'DynamicServiceController@storeMedia')->name('dynamic-services.storeMedia');
-    Route::delete('dynamic-services/destroy', 'DynamicServiceController@massDestroy')->name('dynamic-services.massDestroy');
-    Route::put('dynamic-services/{dynamicService}/program-meetings', 'DynamicServiceController@updateProgramMeetings')->name('dynamic-services.update-program-meetings');
-    Route::match(['get', 'post'], 'dynamic-services/meeting-attendance', 'DynamicServiceController@meetingAttendance')->name('dynamic-services.meeting-attendance');
-    Route::resource('dynamic-services', 'DynamicServiceController');
-
     // Projects (Donations)
     Route::delete('projects/destroy', 'ProjectsController@massDestroy')->name('projects.massDestroy');
     Route::resource('projects', 'ProjectsController');
@@ -258,6 +251,9 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     // Donations
     Route::resource('donations', 'DonationsController')->only(['index', 'create', 'store', 'show']);
 
+    // Workflow finance requests (cross-workflow)
+    Route::resource('workflow-finance-requests', 'WorkflowFinanceRequestsController')->only(['index', 'show', 'update']);
+
     // Volunteers
     Route::delete('volunteers/destroy', 'VolunteersController@massDestroy')->name('volunteers.massDestroy');
     Route::post('volunteers/media', 'VolunteersController@storeMedia')->name('volunteers.storeMedia');
@@ -270,13 +266,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     Route::delete('volunteer-tasks/destroy', 'VolunteerTasksController@massDestroy')->name('volunteer-tasks.massDestroy');
     Route::get('volunteer-tasks/{id}/qr', 'VolunteerTasksController@qr')->name('volunteer-tasks.qr');
     Route::resource('volunteer-tasks', 'VolunteerTasksController');
-
-    // Dynamic Service Workflows
-    Route::get('dynamic-service-workflows/{dynamicServiceOrder}', 'DynamicServiceWorkflowController@show')->name('dynamic-service-workflows.show');
-    Route::post('dynamic-service-workflows/{workflow}/transition', 'DynamicServiceWorkflowController@transition')->name('dynamic-service-workflows.transition');
-    Route::post('dynamic-service-workflows/{workflow}/attendance', 'DynamicServiceWorkflowController@updateAttendance')->name('dynamic-service-workflows.attendance');
-    Route::post('dynamic-service-workflows/{workflow}/accounting', 'DynamicServiceWorkflowController@updateAccounting')->name('dynamic-service-workflows.accounting');
-    Route::post('dynamic-service-workflows/{workflow}/satisfaction', 'DynamicServiceWorkflowController@updateSatisfaction')->name('dynamic-service-workflows.satisfaction');
 
     // Beneficiary Orders
     Route::delete('beneficiary-orders/destroy', 'BeneficiaryOrdersController@massDestroy')->name('beneficiary-orders.massDestroy');
@@ -435,7 +424,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'namespace' => 'Admin', 'mi
     Route::post('beneficiary-field-visibility/bulk-update', 'BeneficiaryFieldVisibilityController@bulkUpdate')->name('beneficiary-field-visibility.bulk-update');
     Route::post('beneficiary-field-visibility/{id}/toggle-visibility', 'BeneficiaryFieldVisibilityController@toggleVisibility')->name('beneficiary-field-visibility.toggle-visibility');
     Route::post('beneficiary-field-visibility/{id}/toggle-required', 'BeneficiaryFieldVisibilityController@toggleRequired')->name('beneficiary-field-visibility.toggle-required');
-    
 });
 Route::group(['prefix' => 'profile', 'as' => 'profile.', 'namespace' => 'Auth', 'middleware' => ['auth']], function () {
     // Change password

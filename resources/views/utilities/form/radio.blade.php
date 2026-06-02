@@ -8,8 +8,8 @@
     @foreach ($options as $key => $option)
         <div class="form-check {{ $errors->has($name) ? 'is-invalid' : '' }}">
             <input class="form-check-input" type="radio" id="{{ $name }}_{{ $key }}"
-                name="{{ $name }}" value="{{ $key }}"
-                {{ old($name, $value) == $key ? 'checked' : '' }} @if ($isRequired) required @endif>
+                name="{{ $name }}" value="{{ $key }}" {{ old($name, $value) == $key ? 'checked' : '' }}
+                @if ($isRequired) required @endif>
             <label class="form-check-label" for="{{ $name }}_{{ $key }}">{{ $option }}</label>
         </div>
     @endforeach
@@ -20,7 +20,5 @@
     @endif
     @if (isset($helperBlock))
         <span class="help-block">{{ trans($helperBlock) }}</span>
-    @else
-        <span class="help-block">{{ trans($label . '_helper') }}</span>
     @endif
 </div>

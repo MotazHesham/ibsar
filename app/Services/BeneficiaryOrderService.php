@@ -10,8 +10,9 @@ use App\Models\CourseStudent;
 use App\Models\ServiceLoan;
 use App\Models\ServiceLoanMember;
 use App\Models\Loan;
-use App\Models\DynamicServiceOrder;
-use App\Models\DynamicServiceWorkflow;
+use Modules\DynamicServices\Helpers\DynamicServiceHelper;
+use Modules\DynamicServices\Models\DynamicService;
+use Modules\DynamicServices\Models\DynamicServiceOrder;
 use Carbon\Carbon;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -77,13 +78,13 @@ class BeneficiaryOrderService
                 'attend_same_course_before' => $request->prev_courses,
                 'note' => $request->note,
             ]);
-        }elseif($request->service_type == 'loan'){
+        } elseif ($request->service_type == 'loan') {
             $commonData['service_id'] = $request->service_id;
             $beneficiaryOrder = BeneficiaryOrder::create($commonData);
 
-            if($request->has('contacts')){
+            if ($request->has('contacts')) {
                 $contacts = json_encode($request->contacts, JSON_UNESCAPED_UNICODE);
-            }else{
+            } else {
                 $contacts = null;
             }
 
@@ -91,7 +92,7 @@ class BeneficiaryOrderService
 
             $serviceLoan = ServiceLoan::create([
                 'group_name' => $request->group_name,
-                'beneficiary_order_id' => $beneficiaryOrder->id, 
+                'beneficiary_order_id' => $beneficiaryOrder->id,
                 'kafil_name' => $request->kafil_name,
                 'kafil_identity_num' => $request->kafil_identity_num,
                 'accommodation_type_id' => $request->accommodation_type_id,
@@ -109,19 +110,19 @@ class BeneficiaryOrderService
                 'kafil_work_name' => $request->kafil_work_name,
                 'kafil_mail_box' => $request->kafil_mail_box,
                 'kafil_postal_code' => $request->kafil_postal_code,
-                
+
                 'amount' => $loan->amount,
                 'installment' => $loan->installment,
                 'months' => $loan->months,
 
                 'contacts' => $contacts,
             ]);
-            
+
             ServiceLoanMember::create([
-                'service_loan_id' => $serviceLoan->id, 
+                'service_loan_id' => $serviceLoan->id,
                 'beneficiary_id' => $beneficiary->id,
                 'name' => $user->name,
-                'identity_number' => $user->identity_num, 
+                'identity_number' => $user->identity_num,
                 'member_position' => 'responsible',
                 'status' => 'approved',
                 'project_type' => $request->project_type,
@@ -141,49 +142,57 @@ class BeneficiaryOrderService
                 'loan_id' => $request->loan_id,
             ]);
 
-            if($request->has('members')){
-                foreach($request->members as $member){
+            if ($request->has('members')) {
+                foreach ($request->members as $member) {
                     ServiceLoanMember::create([
-                        'service_loan_id' => $serviceLoan->id, 
+                        'service_loan_id' => $serviceLoan->id,
                         'name' => $member['name'],
-                        'identity_number' => $member['identity_number'], 
+                        'identity_number' => $member['identity_number'],
                         'member_position' => 'member',
                     ]);
                 }
             }
         } elseif (str_starts_with($request->service_type, 'dynamic_')) {
             // Handle dynamic service
-            $dynamicServiceId = \App\Helpers\DynamicServiceHelper::extractDynamicServiceId($request->service_type);
+            $dynamicServiceId = DynamicServiceHelper::extractDynamicServiceId($request->service_type);
             $beneficiaryOrder = BeneficiaryOrder::create($commonData);
-            
-            // Get dynamic service to access form fields metadata
-            $dynamicService = \App\Models\DynamicService::find($dynamicServiceId);
-            
+
+            $dynamicService = DynamicService::find($dynamicServiceId);
+
             // Collect dynamic field data with metadata
             $fieldData = [];
             if ($dynamicService && $dynamicService->form_fields) {
                 $formFields = json_decode($dynamicService->form_fields, true);
-                
+
                 foreach ($formFields as $field) {
                     $fieldId = $field['id'];
                     $fieldKey = 'dynamic_field_' . $fieldId;
-                    
-                    if ($request->has($fieldKey)) {
-                        $fieldData[] = [
-                            'id' => $fieldId,
-                            'label' => $field['label'] ?? '',
-                            'type' => $field['type'] ?? 'text',
-                            'required' => $field['required'] ?? false,
-                            'value' => $request->input($fieldKey),
-                            'options' => $field['options'] ?? null,
-                            'validation' => $field['validation'] ?? null,
-                            'grid' => $field['grid'] ?? 'col-md-6',
-                            'attributes' => $field['attributes'] ?? null,
-                        ];
+                    $fieldType = $field['type'] ?? 'text';
+
+                    if (!$request->filled($fieldKey)) {
+                        continue;
                     }
+
+                    $fieldEntry = [
+                        'id' => $fieldId,
+                        'label' => $field['label'] ?? '',
+                        'type' => $fieldType,
+                        'required' => $field['required'] ?? false,
+                        'value' => $request->input($fieldKey),
+                        'options' => $field['options'] ?? null,
+                        'validation' => $field['validation'] ?? null,
+                        'grid' => $field['grid'] ?? 'col-md-6',
+                        'attributes' => $field['attributes'] ?? null,
+                    ];
+
+                    if ($fieldType === 'file' && $request->filled($fieldKey . '_original_name')) {
+                        $fieldEntry['original_name'] = $request->input($fieldKey . '_original_name');
+                    }
+
+                    $fieldData[] = $fieldEntry;
                 }
             }
-            
+
             // Create dynamic service order record
             $dynamicServiceOrder = DynamicServiceOrder::create([
                 'beneficiary_order_id' => $beneficiaryOrder->id,
@@ -191,47 +200,14 @@ class BeneficiaryOrderService
                 'field_data' => $fieldData,
             ]);
 
-            // Create workflow for training category
-            if ($dynamicService && $dynamicService->category === 'training') {
-                $workflow = DynamicServiceWorkflow::create([
-                    'dynamic_service_order_id' => $dynamicServiceOrder->id,
-                    'category' => 'training',
-                    'current_status' => DynamicServiceWorkflow::STATUS_PENDING_REVIEW,
-                ]);
-                
-                // Create training-specific data
-                \App\Models\DynamicServiceWorkflowTraining::create([
-                    'workflow_id' => $workflow->id,
-                    'service_type' => $dynamicService->service_type, // 'individual' or 'group'
-                ]);
+            $fieldData = $this->attachDynamicFieldFiles($dynamicServiceOrder, $fieldData);
+            if (!empty($fieldData)) {
+                $dynamicServiceOrder->update(['field_data' => $fieldData]);
             }
-            
-            // Create workflow for assistance category
-            if ($dynamicService && $dynamicService->category === 'assistance') {
-                $workflow = DynamicServiceWorkflow::create([
-                    'dynamic_service_order_id' => $dynamicServiceOrder->id,
-                    'category' => 'assistance',
-                    'current_status' => DynamicServiceWorkflow::STATUS_PENDING_REVIEW,
-                ]);
-                
-                // Create assistance-specific data
-                \App\Models\DynamicServiceWorkflowAssistance::create([
-                    'workflow_id' => $workflow->id,
-                ]);
-            }
-            
-            // Create workflow for social_programs category
-            if ($dynamicService && $dynamicService->category === 'social_programs') {
-                $workflow = DynamicServiceWorkflow::create([
-                    'dynamic_service_order_id' => $dynamicServiceOrder->id,
-                    'category' => 'social_programs',
-                    'current_status' => DynamicServiceWorkflow::STATUS_PENDING_REVIEW,
-                ]);
-                
-                // Create social_programs-specific data
-                \App\Models\DynamicServiceWorkflowSocialPrograms::create([
-                    'workflow_id' => $workflow->id,
-                ]);
+
+            if ($dynamicService) {
+                app(\Modules\DynamicServices\Services\DynamicOrderWorkflowService::class)
+                    ->initializeWorkflow($dynamicServiceOrder, $dynamicService);
             }
         }
 
@@ -243,5 +219,32 @@ class BeneficiaryOrderService
             Media::whereIn('id', $media)->update(['model_id' => $beneficiaryOrder->id]);
         }
         return $beneficiaryOrder;
+    }
+
+    protected function attachDynamicFieldFiles(DynamicServiceOrder $dynamicServiceOrder, array $fieldData): array
+    {
+        foreach ($fieldData as &$field) {
+            if (($field['type'] ?? '') !== 'file' || empty($field['value'])) {
+                continue;
+            }
+
+            $tmpFileName = basename($field['value']);
+            $tmpPath = storage_path('tmp/uploads/' . $tmpFileName);
+
+            if (!is_file($tmpPath)) {
+                continue;
+            }
+
+            $media = $dynamicServiceOrder->addMedia($tmpPath)
+                ->usingFileName($tmpFileName)
+                ->toMediaCollection('dynamic_field_' . $field['id']);
+
+            $field['value'] = $media->getUrl();
+            $field['media_id'] = $media->id;
+            $field['file_name'] = $media->file_name;
+        }
+        unset($field);
+
+        return $fieldData;
     }
 }

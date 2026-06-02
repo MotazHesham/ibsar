@@ -1,7 +1,11 @@
 <div class="form-group mb-3 {{ $grid ?? '' }}">
     <div class="mail-compose">
         <label class="form-label" for="{{ $name }}">
-            {{ trans($label) }}
+            @if (!empty($rawLabel))
+                {{ $label }}
+            @else
+                {{ trans($label) }}
+            @endif
             @if ($isRequired)
                 <span class="text-danger">*</span>
             @endif
@@ -27,8 +31,6 @@
         @endif
         @if (isset($helperBlock))
             <span class="help-block">{{ trans($helperBlock) }}</span>
-        @else
-            <span class="help-block">{{ trans($label . '_helper') }}</span>
         @endif
     </div>
 </div>
@@ -58,7 +60,7 @@
                 }],
                 [{
                     align: []
-                }], 
+                }],
                 ["clean"]
             ];
 

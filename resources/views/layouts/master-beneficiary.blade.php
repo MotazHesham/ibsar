@@ -36,18 +36,7 @@
 
     @yield('styles')
     @if (app()->getLocale() == 'ar')
-        <style>
-            @import url(https://fonts.googleapis.com/earlyaccess/droidarabicnaskh.css);
-
-            body {
-                font-family: 'Droid Arabic Naskh', 'Roboto', serif;
-            }
-
-            .main-menu i {
-                font-size: 1.1rem;
-                padding: 0 0 0 10px;
-            }
-        </style>
+        @include('layouts.components.arabic-font')
     @else
         <style>
             .main-menu i {
@@ -88,6 +77,14 @@
                                 <li>{{ $error }}</li>
                             @endforeach
                         </ul>
+                    </div>
+                @endif
+
+                @if(session('message'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="ri-check-line me-2"></i>
+                        {{ session('message') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 @endif
 

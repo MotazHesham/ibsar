@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Helpers\DynamicServiceHelper;
+use Modules\DynamicServices\Helpers\DynamicServiceHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Traits\MediaUploadingTrait;
 use App\Http\Requests\Admin\MassDestroyBeneficiaryOrderRequest;
@@ -10,11 +10,11 @@ use App\Http\Requests\Admin\StoreBeneficiaryOrderRequest;
 use App\Http\Requests\Admin\UpdateBeneficiaryOrderRequest;
 use App\Models\AccommodationType;
 use App\Models\Beneficiary;
-use App\Models\BeneficiaryOrder; 
-use App\Models\Course; 
+use App\Models\BeneficiaryOrder;
+use App\Models\Course;
 use App\Models\CustomActivityLog;
 use App\Models\District;
-use App\Models\DynamicService;
+use Modules\DynamicServices\Models\DynamicService;
 use App\Models\EducationalQualification;
 use App\Models\FamilyRelationship;
 use App\Models\JobType;
@@ -27,6 +27,7 @@ use App\Models\ServiceLoanInstallment;
 use App\Services\BeneficiaryOrderService;
 use App\Services\OdooService;
 use App\Services\DonationAllocationService;
+use Modules\DynamicServices\Services\DynamicOrderWorkflowService;
 use App\Http\Requests\Admin\StoreBeneficiaryOrderDonationAllocationRequest;
 use App\Models\Donation;
 use App\Models\DonationAllocationItem;
@@ -35,6 +36,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -44,67 +46,86 @@ class BeneficiaryOrdersController extends Controller
     protected $beneficiaryOrderService;
     protected $odooService;
     protected $donationAllocationService;
+    protected $dynamicOrderWorkflowService;
 
     public function __construct(
         BeneficiaryOrderService $beneficiaryOrderService,
         OdooService $odooService,
-        DonationAllocationService $donationAllocationService
+        DonationAllocationService $donationAllocationService,
+        DynamicOrderWorkflowService $dynamicOrderWorkflowService
     ) {
         $this->beneficiaryOrderService   = $beneficiaryOrderService;
         $this->odooService               = $odooService;
         $this->donationAllocationService = $donationAllocationService;
+        $this->dynamicOrderWorkflowService = $dynamicOrderWorkflowService;
     }
 
     public function updateStatus(BeneficiaryOrder $beneficiaryOrder, Request $request)
     {
-        try { 
-            DB::beginTransaction(); 
-            $beneficiaryOrder->update($request->all());
+        try {
+            if ($request->boolean('dynamic_workflow') && $request->filled('workflow_action')) {
+                if (! DynamicServiceHelper::isDynamicService($beneficiaryOrder->service_type)) {
+                    abort(400, 'Invalid dynamic service order.');
+                }
+
+                $this->dynamicOrderWorkflowService->processAction(
+                    $beneficiaryOrder,
+                    $request->input('workflow_action'),
+                    $request->except(['_token', '_method', 'dynamic_workflow', 'workflow_action'])
+                );
+
+                return redirect()->route('admin.beneficiary-orders.show', $beneficiaryOrder);
+            }
+
+            DB::beginTransaction();
+            if ($request->has('accept_status')) {
+                $beneficiaryOrder->update([
+                    'accept_status' => $request->accept_status,
+                    'refused_reason' => $request->refused_reason,
+                ]);
+            }
+            if ($request->has('status_id')) {
+                $beneficiaryOrder->update(['status_id' => $request->status_id]);
+            }
+            if ($request->has('specialist_id')) {
+                $beneficiaryOrder->update(['specialist_id' => $request->specialist_id]);
+            }
             if ($request->has('finish')) {
                 $beneficiaryOrder->update(['done' => 1]);
-                if($beneficiaryOrder->service_type == 'consultant'){
+                if ($beneficiaryOrder->service_type == 'consultant') {
                     $beneficiaryOrder->beneficiaryOrderAppointment->update(['status' => 'confirmed']);
                 }
             }
-
-            if ($request->has('loan-pay') && $beneficiaryOrder->service_type == 'loan') { 
-                if($beneficiaryOrder->serviceLoan->status == 'pending'){
-                    $startDate = $request->installment_date ? now()->parse(Carbon::createFromFormat(config('panel.date_format'), $request->installment_date)->format('Y-m-d')) : now();
-
-                    $beneficiaryOrder->serviceLoan->addInstallments($startDate);
-
-                    $beneficiaryOrder->serviceLoan->update(['status' => 'loan_paid']);
-
-                    // Sync to Odoo: ensure partner exists and register outbound payment
-                    $this->odooService->syncLoanPayment($beneficiaryOrder); 
-                }
-            } 
             DB::commit();
+        } catch (ValidationException $e) {
+            return redirect()->route('admin.beneficiary-orders.show', $beneficiaryOrder)->withErrors($e->errors());
         } catch (\Throwable $th) {
-            Log::error('Error syncing loan payment to Odoo: ' . $th->getMessage());
+
+            toast()->error('Error', 'cant update beneficiary order status: ' . $th->getMessage());
+            Log::error('Error updating beneficiary order status: ' . $th->getMessage());
             DB::rollBack();
         }
         return redirect()->route('admin.beneficiary-orders.show', $beneficiaryOrder);
-    } 
+    }
 
     public function signatureDownload($id)
     {
         $order = BeneficiaryOrder::findOrFail($id);
 
         $base64Image = $order->signature; // Assuming this contains the "data:image/png;base64,..."
-    
+
         // Remove header (data:image/png;base64,)
         if (str_contains($base64Image, ',')) {
             $base64Image = explode(',', $base64Image)[1];
         }
-    
+
         $imageData = base64_decode($base64Image);
-    
+
         return response($imageData)
             ->header('Content-Type', 'image/png')
             ->header('Content-Disposition', 'attachment; filename="signature.png"');
     }
-    
+
 
     public function index(Request $request)
     {
@@ -133,7 +154,7 @@ class BeneficiaryOrdersController extends Controller
                     case 'archived':
                         $query->where('is_archived', 1);
                         break;
-                    case 'all': 
+                    case 'all':
                         break;
                     default:
                         abort(404);
@@ -189,7 +210,7 @@ class BeneficiaryOrdersController extends Controller
                     return DynamicServiceHelper::getServiceTitle($row->service_type);
                 }
                 return $row->service_type ? Service::TYPE_SELECT[$row->service_type] : '';
-            }); 
+            });
 
             $table->editColumn('service.title', function ($row) {
                 return $row->service ? (is_string($row->service) ? $row->service : $row->service->title) : '';
@@ -231,7 +252,7 @@ class BeneficiaryOrdersController extends Controller
         } else {
             // Check if it's a standard service
             if (!request()->get('service_type') || !in_array(request()->get('service_type'), array_keys(Service::TYPE_SELECT))) {
-                abort(404); 
+                abort(404);
             }
         }
 
@@ -241,7 +262,7 @@ class BeneficiaryOrdersController extends Controller
         $maritalStatuses = MaritalStatus::pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
         $educationalQualifications = EducationalQualification::pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
         $jobTypes = JobType::pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
-        $districts = District::pluck('name', 'id')->prepend(trans('global.pleaseSelect'), ''); 
+        $districts = District::pluck('name', 'id')->prepend(trans('global.pleaseSelect'), '');
 
         $services = Service::where('active', 1)
             ->where('type', request()->get('service_type'))
@@ -274,7 +295,7 @@ class BeneficiaryOrdersController extends Controller
     }
 
     public function store(StoreBeneficiaryOrderRequest $request)
-    {  
+    {
         $beneficiaryOrder = $this->beneficiaryOrderService->createBeneficiaryOrder($request);
 
         return redirect()->route('admin.beneficiary-orders.index');
@@ -320,7 +341,7 @@ class BeneficiaryOrdersController extends Controller
     }
 
     public function show(BeneficiaryOrder $beneficiaryOrder)
-    {  
+    {
         abort_if(Gate::denies('beneficiary_order_show'), Response::HTTP_FORBIDDEN, '403 Forbidden');
 
         if (Gate::denies('beneficiary_orders_management_access')) {
@@ -336,7 +357,6 @@ class BeneficiaryOrdersController extends Controller
             'specialist',
             'beneficiaryOrderFollowups.user',
             'dynamicServiceOrder.dynamicService',
-            'dynamicServiceOrder.workflow.transitions.user',
             'donationAllocations.donation.donator',
             'donationAllocations.donation.items',
             'donationAllocations.items.donationItem'
@@ -372,7 +392,7 @@ class BeneficiaryOrdersController extends Controller
                         $allocatedQuantity = \App\Models\DonationAllocationItem::where('donation_item_id', $item->id)
                             ->sum('allocated_quantity');
                         $remainingQuantity = max(0, (float) $item->quantity - (float) $allocatedQuantity);
-                        
+
                         return [
                             'item_id'         => $item->id,
                             'item_name'       => $item->item_name,
@@ -395,11 +415,22 @@ class BeneficiaryOrdersController extends Controller
             ]);
         }
 
+        $workflowContext = null;
+        if (DynamicServiceHelper::isDynamicService($beneficiaryOrder->service_type)) {
+            $dynamicServiceOrder = $beneficiaryOrder->dynamicServiceOrder;
+            if ($dynamicServiceOrder) {
+                $this->dynamicOrderWorkflowService->backfillMissingWorkflow($dynamicServiceOrder);
+                $beneficiaryOrder->load('dynamicServiceOrder.dynamicService');
+            }
+            $workflowContext = $this->dynamicOrderWorkflowService->getWorkflowContext($beneficiaryOrder);
+        }
+
         return view('admin.beneficiaryOrders.show', compact(
             'beneficiaryOrder',
             'activityLogs',
             'statuses',
             'specialists',
+            'workflowContext',
             'fundingSummary',
             'availableDonations',
             'donationsData'

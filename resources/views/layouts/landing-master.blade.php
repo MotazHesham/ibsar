@@ -33,13 +33,7 @@
     <link href="{{ asset('assets/css/styles.css') }}" rel="stylesheet">
 
     @if (app()->getLocale() == 'ar')
-        <style>
-            @import url(https://fonts.googleapis.com/earlyaccess/droidarabicnaskh.css);
-
-            body {
-                font-family: 'Droid Arabic Naskh', 'Roboto', serif;
-            } 
-        </style> 
+        @include('layouts.components.arabic-font')
     @endif
     @yield('styles')
 

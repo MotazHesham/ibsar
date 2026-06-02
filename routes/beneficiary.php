@@ -28,6 +28,24 @@ Route::group(['prefix' => 'beneficiary', 'as' => 'beneficiary.', 'namespace' => 
     Route::post('beneficiary-orders/media', 'BeneficiaryOrdersController@storeMedia')->name('beneficiary-orders.storeMedia');
     Route::post('beneficiary-orders/ckmedia', 'BeneficiaryOrdersController@storeCKEditorImages')->name('beneficiary-orders.storeCKEditorImages');
     Route::resource('beneficiary-orders', 'BeneficiaryOrdersController');
+    Route::post('beneficiary-orders/{beneficiaryOrder}/training-satisfaction', 'BeneficiaryOrdersController@submitTrainingSatisfaction')
+        ->name('beneficiary-orders.training-satisfaction');
+    Route::post('beneficiary-orders/{beneficiaryOrder}/assistance-pickup', 'BeneficiaryOrdersController@submitAssistancePickup')
+        ->name('beneficiary-orders.assistance-pickup');
+    Route::post('beneficiary-orders/{beneficiaryOrder}/assistance-complete-docs', 'BeneficiaryOrdersController@submitAssistanceCompleteDocs')
+        ->name('beneficiary-orders.assistance-complete-docs');
+    Route::post('beneficiary-orders/{beneficiaryOrder}/assistance-satisfaction', 'BeneficiaryOrdersController@submitAssistanceSatisfaction')
+        ->name('beneficiary-orders.assistance-satisfaction');
+    Route::post('beneficiary-orders/{beneficiaryOrder}/surgical-receipt', 'BeneficiaryOrdersController@submitSurgicalReceipt')
+        ->name('beneficiary-orders.surgical-receipt');
+    Route::post('beneficiary-orders/{beneficiaryOrder}/detection-pickup', 'BeneficiaryOrdersController@submitDetectionPickup')
+        ->name('beneficiary-orders.detection-pickup');
+    Route::post('beneficiary-orders/{beneficiaryOrder}/detection-receipt', 'BeneficiaryOrdersController@submitDetectionReceipt')
+        ->name('beneficiary-orders.detection-receipt');
+    Route::post('beneficiary-orders/{beneficiaryOrder}/detection-satisfaction', 'BeneficiaryOrdersController@submitDetectionSatisfaction')
+        ->name('beneficiary-orders.detection-satisfaction');
+
+    Route::get('user-alerts', 'UserAlertsController@index')->name('user-alerts.index');
 
     // Loan Actions
     Route::post('loan/update', 'LoanController@update')->name('loan.update'); 

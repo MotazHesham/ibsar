@@ -46,10 +46,17 @@
                             {{ $beneficiaryOrder->refused_reason }}
                         </div>
                     @elseif ($beneficiaryOrder->accept_status == 'yes')
-                        <div class="alert alert-success">
-                            <i class="ri-alert-line"></i>
-                            الطلب مقبول وقيد المتابعة
-                        </div>
+                        @if (!empty($workflowContext) && !($workflowContext['isCompleted'] ?? false) && !($workflowContext['isRejected'] ?? false))
+                            <div class="alert alert-success mb-2">
+                                <i class="ri-check-line"></i>
+                                الطلب مقبول — {{ $workflowContext['currentStepLabel'] ?? 'قيد المتابعة' }}
+                            </div>
+                        @else
+                            <div class="alert alert-success">
+                                <i class="ri-check-line"></i>
+                                الطلب مقبول وقيد المتابعة
+                            </div>
+                        @endif
                     @endif
                 @endif
             @endif

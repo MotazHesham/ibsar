@@ -6,8 +6,9 @@
         @endif
     </label>
     <select
-        class="form-select  @isset($search) @if($search) select2 @endif @endisset {{ $errors->has($name) ? ' is-invalid' : '' }}"
-        name="{{ $name }}" id="{{ $id ?? $name }}" @if ($isRequired) required @endif @if (isset($attributes)) {{ $attributes }} @endif>
+        class="form-select  @isset($search) @if ($search) select2 @endif @endisset {{ $errors->has($name) ? ' is-invalid' : '' }}"
+        name="{{ $name }}" id="{{ $id ?? $name }}" @if ($isRequired) required @endif
+        @if (isset($attributes)) {{ $attributes }} @endif>
         @foreach ($options as $rawId => $entry)
             <option value="{{ $rawId }}"
                 {{ (old($name) ? old($name) : (isset($value) ? $value : '')) == $rawId ? 'selected' : '' }}>
@@ -21,7 +22,5 @@
     @endif
     @if (isset($helperBlock))
         <span class="help-block">{{ trans($helperBlock) }}</span>
-    @else
-        <span class="help-block">{{ trans($label . '_helper') }}</span>
     @endif
-</div> 
+</div>

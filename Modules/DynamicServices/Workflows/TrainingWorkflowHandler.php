@@ -1,0 +1,723 @@
+<?php
+
+namespace Modules\DynamicServices\Workflows;
+
+use App\Models\BeneficiaryOrder;
+use App\Services\WorkflowFinanceRequestService;
+use Modules\DynamicServices\Models\DynamicService;
+use Modules\DynamicServices\Models\DynamicServiceOrder;
+use Illuminate\Validation\ValidationException;
+use Modules\DynamicServices\Services\TrainingWorkflowService;
+
+class TrainingWorkflowHandler extends AbstractWorkflowHandler
+{
+    public const STEP_INITIAL_APPROVAL = 'initial_approval';
+    public const STEP_EVALUATION_SCHEDULING = 'evaluation_scheduling';
+    public const STEP_ATTENDANCE = 'attendance';
+    public const STEP_EVALUATION = 'evaluation';
+    public const STEP_FINANCIAL_APPROVAL = 'financial_approval';
+    public const STEP_DONATION_ALLOCATION = 'donation_allocation';
+    public const STEP_SESSION_SCHEDULING = 'session_scheduling';
+    public const STEP_SEND_MEETING_SCHEDULE = 'send_meeting_schedule';
+    public const STEP_START_PROGRAM = 'start_program';
+    public const STEP_TESTING = 'testing';
+
+    public const ACTION_SUBMIT_EVALUATION_SCHEDULE = 'submit_evaluation_schedule';
+    public const ACTION_SUBMIT_EVALUATION = 'submit_evaluation';
+    public const ACTION_RESCHEDULE = 'reschedule';
+    public const ACTION_APPROVE_FINANCIAL = 'approve_financial';
+    public const ACTION_REJECT_FINANCIAL = 'reject_financial';
+    public const ACTION_CONFIRM_DONATION = 'confirm_donation';
+    public const ACTION_SCHEDULE_SESSION = 'schedule_session';
+    public const ACTION_MARK_SESSION_ATTENDED = 'mark_session_attended';
+    public const ACTION_SUBMIT_TEST = 'submit_test';
+    public const ACTION_COMPLETE_SATISFACTION = 'complete_satisfaction';
+    public const ACTION_SUBMIT_GROUP_SCHEDULE = 'submit_group_schedule';
+    public const ACTION_MARK_PROGRAM_ATTENDANCE = 'mark_program_attendance';
+
+    public function __construct(
+        protected TrainingWorkflowService $trainingService,
+        protected WorkflowFinanceRequestService $financeRequestService
+    ) {}
+
+    public function category(): string
+    {
+        return DynamicService::CATEGORY_TRAINING;
+    }
+
+    public function viewName(): string
+    {
+        return 'dynamicservices::workflows.training.edit-status';
+    }
+
+    public function steps(DynamicService $service): array
+    {
+        if ($service->service_type === 'group') {
+            return [
+                self::STEP_INITIAL_APPROVAL => 'الاعتماد',
+                self::STEP_SEND_MEETING_SCHEDULE => 'إرسال جدول اللقاءات',
+                self::STEP_START_PROGRAM => 'البدء في البرنامج',
+                self::STEP_TESTING => 'الاختبار',
+                self::STEP_COMPLETED => 'مكتمل',
+            ];
+        }
+
+        return [
+            self::STEP_INITIAL_APPROVAL => 'اعتماد الاستقبال',
+            self::STEP_EVALUATION_SCHEDULING => 'جدولة موعد التقييم',
+            self::STEP_ATTENDANCE => 'الحضور',
+            self::STEP_EVALUATION => 'نموذج التقييم',
+            self::STEP_FINANCIAL_APPROVAL => 'اعتماد المالية',
+            self::STEP_DONATION_ALLOCATION => 'تخصيص التبرعات',
+            self::STEP_SESSION_SCHEDULING => 'جدولة المواعيد',
+            self::STEP_TESTING => 'الاختبار',
+            self::STEP_COMPLETED => 'مكتمل',
+        ];
+    }
+
+    public function initialStep(DynamicService $service): string
+    {
+        return self::STEP_INITIAL_APPROVAL;
+    }
+
+    public function availableActions(
+        BeneficiaryOrder $beneficiaryOrder,
+        DynamicServiceOrder $dynamicServiceOrder,
+        DynamicService $service
+    ): array {
+        if ($this->isCompleted($dynamicServiceOrder) || $this->isRejected($dynamicServiceOrder)) {
+            return [];
+        }
+
+        if ($service->service_type === 'group') {
+            return $this->groupActions($dynamicServiceOrder, $service);
+        }
+
+        return $this->individualActions($beneficiaryOrder, $dynamicServiceOrder);
+    }
+
+    protected function individualActions(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): array
+    {
+        $test = $dynamicServiceOrder->workflow_data['test'] ?? null;
+
+        return match ($dynamicServiceOrder->workflow_step) {
+            self::STEP_INITIAL_APPROVAL => $this->approvalActions('يعتمد', 'لا يعتمد'),
+            self::STEP_EVALUATION_SCHEDULING => [[
+                'key' => self::ACTION_SUBMIT_EVALUATION_SCHEDULE,
+                'label' => 'حفظ وإرسال موعد التقييم',
+                'type' => 'primary',
+                'form_submit' => true,
+            ]],
+            self::STEP_ATTENDANCE => array_merge($this->attendanceActions(), [[
+                'key' => self::ACTION_RESCHEDULE,
+                'label' => 'إعادة جدولة الموعد',
+                'type' => 'secondary',
+            ]]),
+            self::STEP_EVALUATION => [[
+                'key' => self::ACTION_SUBMIT_EVALUATION,
+                'label' => 'حفظ نموذج التقييم',
+                'type' => 'primary',
+                'form_submit' => true,
+            ]],
+            self::STEP_FINANCIAL_APPROVAL => [
+                ['key' => self::ACTION_APPROVE_FINANCIAL, 'label' => 'يعتمد (المالية)', 'type' => 'success'],
+                ['key' => self::ACTION_REJECT_FINANCIAL, 'label' => 'لا يعتمد (لم يسدد)', 'type' => 'danger'],
+            ],
+            self::STEP_DONATION_ALLOCATION => [[
+                'key' => self::ACTION_CONFIRM_DONATION,
+                'label' => 'تأكيد تخصيص التبرع',
+                'type' => 'primary',
+            ]],
+            self::STEP_SESSION_SCHEDULING => $this->sessionSchedulingActions($dynamicServiceOrder),
+            self::STEP_TESTING => $this->testingActions($test),
+            default => [],
+        };
+    }
+
+    protected function groupActions(DynamicServiceOrder $dynamicServiceOrder, DynamicService $service): array
+    {
+        $test = $dynamicServiceOrder->workflow_data['test'] ?? null;
+        $groupStats = $this->trainingService->getGroupWorkflowStats($service);
+
+        return match ($dynamicServiceOrder->workflow_step) {
+            self::STEP_INITIAL_APPROVAL => $this->approvalActions('يعتمد', 'لا يعتمد'),
+            self::STEP_SEND_MEETING_SCHEDULE => $groupStats['canScheduleMeetings']
+                ? [[
+                    'key' => self::ACTION_SUBMIT_GROUP_SCHEDULE,
+                    'label' => 'حفظ وإرسال جدول اللقاءات',
+                    'type' => 'primary',
+                    'form_submit' => true,
+                ]]
+                : [],
+            self::STEP_START_PROGRAM => [[
+                'key' => self::ACTION_MARK_PROGRAM_ATTENDANCE,
+                'label' => 'تسجيل حضور (قص الباركود)',
+                'type' => 'success',
+            ], [
+                'key' => self::ACTION_ADVANCE,
+                'label' => 'انتهاء الجلسات والانتقال للاختبار',
+                'type' => 'primary',
+            ]],
+            self::STEP_TESTING => $this->testingActions($test),
+            default => [],
+        };
+    }
+
+    protected function sessionSchedulingActions(DynamicServiceOrder $dynamicServiceOrder): array
+    {
+        $sessions = $dynamicServiceOrder->workflow_data['sessions'] ?? [];
+        $actions = [[
+            'key' => self::ACTION_SCHEDULE_SESSION,
+            'label' => 'حفظ وجدولة الموعد',
+            'type' => 'primary',
+            'form_submit' => true,
+        ]];
+
+        foreach ($sessions as $session) {
+            if (! empty($session['date']) && empty($session['attended'])) {
+                $actions[] = [
+                    'key' => self::ACTION_MARK_SESSION_ATTENDED,
+                    'label' => 'تسجيل حضور الجلسة ' . $session['number'],
+                    'type' => 'success',
+                    'session_number' => $session['number'],
+                ];
+            }
+        }
+
+        if ($this->trainingService->allSessionsAttended($dynamicServiceOrder)) {
+            $actions[] = [
+                'key' => self::ACTION_ADVANCE,
+                'label' => 'جدولة موعد الاختبار',
+                'type' => 'warning',
+            ];
+        }
+
+        return $actions;
+    }
+
+    protected function testingActions(?array $test): array
+    {
+        if (empty($test)) {
+            return [[
+                'key' => self::ACTION_SUBMIT_TEST,
+                'label' => 'حفظ درجة الاختبار',
+                'type' => 'primary',
+                'form_submit' => true,
+            ]];
+        }
+
+        if (empty($test['passed'])) {
+            return [];
+        }
+
+        if (empty($test['satisfaction_completed'])) {
+            return [[
+                'key' => self::ACTION_COMPLETE_SATISFACTION,
+                'label' => 'تأكيد إكمال استبيان الرضا',
+                'type' => 'success',
+            ]];
+        }
+
+        return [[
+            'key' => self::ACTION_COMPLETE,
+            'label' => 'إنهاء الطلب',
+            'type' => 'success',
+        ]];
+    }
+
+    public function processAction(
+        BeneficiaryOrder $beneficiaryOrder,
+        DynamicServiceOrder $dynamicServiceOrder,
+        DynamicService $service,
+        string $action,
+        array $data = []
+    ): void {
+        $step = $dynamicServiceOrder->workflow_step;
+
+        if ($action === self::ACTION_REJECT) {
+            $this->reject($beneficiaryOrder, $dynamicServiceOrder, $data['reason'] ?? null);
+            $this->trainingService->notifyBeneficiaryUserAlert(
+                $beneficiaryOrder,
+                'نعتذر، لم يتم قبول طلبكم. ' . ($data['reason'] ?? '')
+            );
+
+            return;
+        }
+
+        $validated = $this->trainingService->validateAndExtract($step, $action, $data, $service);
+
+        if ($service->service_type === 'group') {
+            $this->processGroupAction($beneficiaryOrder, $dynamicServiceOrder, $service, $action, $step, $validated);
+
+            return;
+        }
+
+        $this->processIndividualAction($beneficiaryOrder, $dynamicServiceOrder, $service, $action, $step, $validated);
+    }
+
+    protected function processIndividualAction(
+        BeneficiaryOrder $beneficiaryOrder,
+        DynamicServiceOrder $dynamicServiceOrder,
+        DynamicService $service,
+        string $action,
+        string $step,
+        array $data
+    ): void {
+        match (true) {
+            $step === self::STEP_INITIAL_APPROVAL && $action === self::ACTION_APPROVE => $this->handleInitialApproval($beneficiaryOrder, $dynamicServiceOrder),
+
+            $step === self::STEP_EVALUATION_SCHEDULING && $action === self::ACTION_SUBMIT_EVALUATION_SCHEDULE => $this->handleEvaluationSchedule($beneficiaryOrder, $dynamicServiceOrder, $data),
+
+            $step === self::STEP_ATTENDANCE && $action === self::ACTION_MARK_NOT_ATTENDED => $this->handleNotAttended($beneficiaryOrder, $dynamicServiceOrder),
+
+            $step === self::STEP_ATTENDANCE && $action === self::ACTION_MARK_ATTENDED => $this->handleMarkAttended($dynamicServiceOrder),
+
+            $step === self::STEP_ATTENDANCE && $action === self::ACTION_RESCHEDULE => $this->moveToStep($dynamicServiceOrder, self::STEP_EVALUATION_SCHEDULING, 1),
+
+            $step === self::STEP_EVALUATION && $action === self::ACTION_SUBMIT_EVALUATION => $this->handleEvaluationSubmit($beneficiaryOrder, $dynamicServiceOrder, $data),
+
+            $step === self::STEP_FINANCIAL_APPROVAL && $action === self::ACTION_APPROVE_FINANCIAL => $this->handleFinancialApproval($beneficiaryOrder, $dynamicServiceOrder, $data),
+
+            $step === self::STEP_FINANCIAL_APPROVAL && $action === self::ACTION_REJECT_FINANCIAL => $this->handleFinancialRejection($beneficiaryOrder, $dynamicServiceOrder, $data),
+
+            $step === self::STEP_DONATION_ALLOCATION && $action === self::ACTION_CONFIRM_DONATION => $this->handleDonationConfirmed($beneficiaryOrder, $dynamicServiceOrder),
+
+            $step === self::STEP_SESSION_SCHEDULING && $action === self::ACTION_SCHEDULE_SESSION => $this->handleScheduleSession($beneficiaryOrder, $dynamicServiceOrder, $data),
+
+            $step === self::STEP_SESSION_SCHEDULING && $action === self::ACTION_MARK_SESSION_ATTENDED => $this->handleSessionAttendance($beneficiaryOrder, $dynamicServiceOrder, $data),
+
+            $step === self::STEP_SESSION_SCHEDULING && $action === self::ACTION_ADVANCE => $this->handleAdvanceToTesting($beneficiaryOrder, $dynamicServiceOrder),
+
+            $step === self::STEP_TESTING && $action === self::ACTION_SUBMIT_TEST => $this->handleTestSubmit($beneficiaryOrder, $dynamicServiceOrder, $data),
+
+            $step === self::STEP_TESTING && $action === self::ACTION_COMPLETE_SATISFACTION => $this->handleSatisfactionComplete($dynamicServiceOrder, $data),
+
+            $step === self::STEP_TESTING && $action === self::ACTION_COMPLETE => $this->handleOrderComplete($beneficiaryOrder, $dynamicServiceOrder),
+
+            default => null,
+        };
+    }
+
+    protected function handleAdvanceToTesting(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
+    {
+        $this->moveToStep($dynamicServiceOrder, self::STEP_TESTING);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_TESTING, self::ACTION_ADVANCE);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم تحديد مرحلة الاختبار. يرجى مراجعة موعد الاختبار وباركود الحضور من صفحة الطلب.'
+        );
+    }
+
+    protected function handleOrderComplete(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
+    {
+        $this->complete($beneficiaryOrder, $dynamicServiceOrder);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم إنهاء طلب التدريب بنجاح. يمكنكم مراجعة تفاصيل الطلب من صفحته.'
+        );
+    }
+
+    protected function processGroupAction(
+        BeneficiaryOrder $beneficiaryOrder,
+        DynamicServiceOrder $dynamicServiceOrder,
+        DynamicService $service,
+        string $action,
+        string $step,
+        array $data
+    ): void {
+        match (true) {
+            $step === self::STEP_INITIAL_APPROVAL && $action === self::ACTION_APPROVE => $this->handleGroupInitialApproval($beneficiaryOrder, $dynamicServiceOrder),
+
+            $step === self::STEP_SEND_MEETING_SCHEDULE && $action === self::ACTION_SUBMIT_GROUP_SCHEDULE => $this->handleGroupSchedule($beneficiaryOrder, $dynamicServiceOrder, $service, $data),
+
+            $step === self::STEP_START_PROGRAM && $action === self::ACTION_MARK_PROGRAM_ATTENDANCE => $this->handleGroupAttendanceScan($beneficiaryOrder, $dynamicServiceOrder, $service, $data),
+
+            $step === self::STEP_START_PROGRAM && $action === self::ACTION_ADVANCE => $this->handleAdvanceToTesting($beneficiaryOrder, $dynamicServiceOrder),
+
+            $step === self::STEP_TESTING && $action === self::ACTION_SUBMIT_TEST => $this->handleTestSubmit($beneficiaryOrder, $dynamicServiceOrder, $data),
+
+            $step === self::STEP_TESTING && $action === self::ACTION_COMPLETE_SATISFACTION => $this->handleSatisfactionComplete($dynamicServiceOrder, $data),
+
+            $step === self::STEP_TESTING && $action === self::ACTION_COMPLETE => $this->handleOrderComplete($beneficiaryOrder, $dynamicServiceOrder),
+
+            default => null,
+        };
+    }
+
+    protected function handleGroupAttendanceScan(
+        BeneficiaryOrder $beneficiaryOrder,
+        DynamicServiceOrder $dynamicServiceOrder,
+        DynamicService $service,
+        array $data
+    ): void {
+        $targetBeneficiaryOrderId = $this->trainingService->resolveBeneficiaryOrderIdFromBarcode(
+            (string) ($data['attendance_barcode'] ?? '')
+        );
+
+        $targetBeneficiaryOrder = BeneficiaryOrder::query()
+            ->where('id', $targetBeneficiaryOrderId)
+            ->where('service_type', 'dynamic_' . $service->id)
+            ->first();
+
+        if (! $targetBeneficiaryOrder || ! $targetBeneficiaryOrder->dynamicServiceOrder) {
+            throw ValidationException::withMessages([
+                'attendance_barcode' => 'الباركود لا يخص أحد مستفيدي هذا البرنامج.',
+            ]);
+        }
+
+        $targetOrder = $targetBeneficiaryOrder->dynamicServiceOrder;
+        if (! in_array($targetOrder->workflow_step, [self::STEP_START_PROGRAM, self::STEP_TESTING, self::STEP_COMPLETED], true)) {
+            throw ValidationException::withMessages([
+                'attendance_barcode' => 'لا يمكن تسجيل حضور هذا المستفيد في المرحلة الحالية.',
+            ]);
+        }
+
+        $this->trainingService->markGroupAttendance($targetOrder, [
+            'barcode' => $data['attendance_barcode'] ?? null,
+            'scanned_from_beneficiary_order_id' => $beneficiaryOrder->id,
+        ]);
+
+        $historyData = [
+            'attendance_barcode' => $data['attendance_barcode'] ?? null,
+            'beneficiary_order_id' => $targetBeneficiaryOrder->id,
+        ];
+        $this->appendHistory($targetOrder, self::STEP_START_PROGRAM, self::ACTION_MARK_PROGRAM_ATTENDANCE, $historyData);
+
+        $this->financeRequestService->queue(
+            beneficiaryOrder: $targetBeneficiaryOrder,
+            workflowCategory: DynamicService::CATEGORY_TRAINING,
+            workflowStep: self::STEP_START_PROGRAM,
+            triggerAction: self::ACTION_MARK_PROGRAM_ATTENDANCE . '_' . now()->format('YmdHisv'),
+            title: 'قيد حضور تدريب جماعي — ' . $service->title,
+            source: $targetOrder,
+            reference: $service,
+        );
+
+        $approvedOrders = $this->trainingService->approvedGroupOrdersForScheduling($service);
+        $allAttended = $approvedOrders->every(function (DynamicServiceOrder $order) {
+            return ! empty($order->workflow_data['group_attendance']['attended']);
+        });
+
+        if ($allAttended && $approvedOrders->isNotEmpty()) {
+            foreach ($approvedOrders as $approvedOrder) {
+                $approvedBeneficiaryOrder = $approvedOrder->beneficiaryOrder;
+                if (! $approvedBeneficiaryOrder) {
+                    continue;
+                }
+
+                $this->moveToStep($approvedOrder, self::STEP_TESTING, 3);
+                $this->trainingService->mergeWorkflowData($approvedOrder, [
+                    'testing' => array_merge($approvedOrder->workflow_data['testing'] ?? [], [
+                        'schedule_required' => true,
+                        'schedule_required_at' => now()->toDateTimeString(),
+                        'notified_by' => auth()->id(),
+                    ]),
+                ]);
+                $this->appendHistory($approvedOrder, self::STEP_TESTING, self::ACTION_ADVANCE, [
+                    'note' => 'اكتمل حضور الجلسات وتم إشعار الموظف المعني بجدولة الاختبار.',
+                ]);
+            }
+
+            $this->trainingService->notifyStaffUserAlert(
+                'اكتمل حضور البرنامج التدريبي الجماعي (' . $service->title . '). يرجى جدولة موعد الاختبار للمستفيدين.',
+                route('admin.dynamic-services.show', $service)
+            );
+        }
+    }
+
+    protected function handleInitialApproval(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
+    {
+        $this->approveAndMove($beneficiaryOrder, $dynamicServiceOrder, self::STEP_EVALUATION_SCHEDULING, 1);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم قبول طلبكم. سيتم تحديد موعد التقييم (الاستقبال، البحث الاجتماعي، التدريب) وإشعاركم به.'
+        );
+    }
+
+    protected function handleEvaluationSchedule(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    {
+        $this->trainingService->mergeWorkflowData($dynamicServiceOrder, $data);
+        $this->moveToStep($dynamicServiceOrder, self::STEP_ATTENDANCE, 1);
+
+        $appointment = $data['evaluation_appointment'] ?? [];
+        $types = collect($appointment['types'] ?? [])->map(
+            fn($type) => TrainingWorkflowService::EVALUATION_APPOINTMENT_TYPES[$type] ?? $type
+        )->implode('، ');
+
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم تحديد موعد التقييم بتاريخ ' . ($appointment['date'] ?? '') . ' الساعة ' . ($appointment['time'] ?? '') .
+                ($types ? ' — أنواع التقييم: ' . $types : '')
+        );
+        $this->appendHistory($dynamicServiceOrder, self::STEP_EVALUATION_SCHEDULING, self::ACTION_SUBMIT_EVALUATION_SCHEDULE, $appointment);
+    }
+
+    protected function handleNotAttended(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
+    {
+        $this->setWorkflowMeta($dynamicServiceOrder, 'attendance', 'not_attended');
+        $this->appendHistory($dynamicServiceOrder, self::STEP_ATTENDANCE, self::ACTION_MARK_NOT_ATTENDED);
+        $this->moveToStep($dynamicServiceOrder, self::STEP_EVALUATION_SCHEDULING, 1);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'لم يتم تسجيل حضوركم لموعد التقييم. سيتم التواصل معكم لإعادة جدولة الموعد.'
+        );
+    }
+
+    protected function handleEvaluationSubmit(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    {
+        $evaluation = $data['evaluation'] ?? [];
+
+        if (empty($evaluation['qualified'])) {
+            $this->reject($beneficiaryOrder, $dynamicServiceOrder, 'غير مؤهل للتدريب حسب نموذج التقييم');
+            $this->trainingService->notifyBeneficiaryUserAlert($beneficiaryOrder, 'نعتذر، لم يتم اعتمادكم للتدريب بناءً على نموذج التقييم.');
+
+            return;
+        }
+
+        $this->trainingService->mergeWorkflowData($dynamicServiceOrder, $data);
+        $this->trainingService->initializeSessions($dynamicServiceOrder, (int) ($evaluation['sessions_count'] ?? 0));
+        $this->moveToStep($dynamicServiceOrder, self::STEP_FINANCIAL_APPROVAL, 3);
+
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم حفظ تقرير التقييم. سيتم إرسال رابط سداد الرسوم في حال كانت الدورة برسوم.'
+        );
+        $this->appendHistory($dynamicServiceOrder, self::STEP_FINANCIAL_APPROVAL, self::ACTION_SUBMIT_EVALUATION, $evaluation);
+    }
+
+    protected function handleFinancialRejection(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    {
+        $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+            'financial' => [
+                'approved' => false,
+                'rejected_at' => now()->toDateTimeString(),
+                'note' => $data['note'] ?? null,
+            ],
+        ]);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_FINANCIAL_APPROVAL, self::ACTION_REJECT_FINANCIAL, [
+            'approved' => false,
+            'note' => $data['note'] ?? null,
+        ]);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'لم يتم اعتماد المساهمة المالية. يرجى التواصل مع الاستقبال لإتمام السداد.'
+        );
+    }
+
+    protected function handleFinancialApproval(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    {
+        $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+            'financial' => [
+                'approved' => true,
+                'approved_at' => now()->toDateTimeString(),
+                'note' => $data['note'] ?? null,
+            ],
+        ]);
+
+        if ($dynamicServiceOrder->approval_stage === 0) {
+            $beneficiaryOrder->update(['accept_status' => 'yes']);
+        }
+
+        $this->moveToStep($dynamicServiceOrder, self::STEP_DONATION_ALLOCATION, 4);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_FINANCIAL_APPROVAL, self::ACTION_APPROVE_FINANCIAL, [
+            'approved' => true,
+            'note' => $data['note'] ?? null,
+        ]);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم اعتماد المساهمة المالية. سيتم تخصيص التبرع وجدولة الجلسات التدريبية.'
+        );
+    }
+
+    protected function handleMarkAttended(DynamicServiceOrder $dynamicServiceOrder): void
+    {
+        $this->setWorkflowMeta($dynamicServiceOrder, 'attendance', 'attended');
+        $this->moveToStep($dynamicServiceOrder, self::STEP_EVALUATION, 2);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_EVALUATION, self::ACTION_MARK_ATTENDED);
+    }
+
+    protected function handleDonationConfirmed(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
+    {
+        if (! $beneficiaryOrder->donationAllocations()->exists()) {
+            throw ValidationException::withMessages([
+                'donation' => 'يجب تخصيص تبرع قبل المتابعة.',
+            ]);
+        }
+
+        $this->moveToStep($dynamicServiceOrder, self::STEP_SESSION_SCHEDULING, 5);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_DONATION_ALLOCATION, self::ACTION_CONFIRM_DONATION);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم تخصيص التبرع لطلبكم. سيتم تحديد مواعيد الجلسات التدريبية وإشعاركم بها.'
+        );
+    }
+
+    protected function handleScheduleSession(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    {
+        $this->trainingService->scheduleSession(
+            $dynamicServiceOrder,
+            (int) $data['session_number'],
+            $data['session_date'],
+            $data['session_time']
+        );
+
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم تحديد موعد الجلسة رقم ' . $data['session_number'] . ' بتاريخ ' . $data['session_date'] .
+                (! empty($data['session_time']) ? ' الساعة ' . $data['session_time'] : '') .
+                '. يمكنكم عرض باركود الحضور من صفحة الطلب.'
+        );
+        $this->appendHistory($dynamicServiceOrder, self::STEP_SESSION_SCHEDULING, self::ACTION_SCHEDULE_SESSION, $data);
+    }
+
+    protected function handleSessionAttendance(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    {
+        $this->trainingService->markSessionAttended($dynamicServiceOrder, (int) $data['session_number']);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_SESSION_SCHEDULING, self::ACTION_MARK_SESSION_ATTENDED, $data);
+
+        if ($this->trainingService->allSessionsAttended($dynamicServiceOrder->fresh())) {
+            $this->trainingService->notifyBeneficiaryUserAlert(
+                $beneficiaryOrder,
+                'تم إكمال جميع الجلسات التدريبية. سيتم تحديد موعد الاختبار وإشعاركم به.'
+            );
+        }
+    }
+
+    protected function handleTestSubmit(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    {
+        $test = $data['test'] ?? [];
+        $barcode = $test['attendance_barcode'] ?? null;
+        if ($barcode) {
+            $barcodeOrderId = $this->trainingService->resolveTestBeneficiaryOrderIdFromBarcode($barcode);
+            if ((int) $barcodeOrderId !== (int) $beneficiaryOrder->id) {
+                throw ValidationException::withMessages([
+                    'test_attendance_barcode' => 'باركود الاختبار لا يخص هذا المستفيد.',
+                ]);
+            }
+        }
+
+        $this->trainingService->mergeWorkflowData($dynamicServiceOrder, $data);
+        $this->appendHistory($dynamicServiceOrder, self::STEP_TESTING, 'test_attendance_scanned', [
+            'attendance_barcode' => $barcode,
+            'attended' => !empty($test['attended']),
+        ]);
+
+        if (empty($test['passed'])) {
+            $this->trainingService->notifyBeneficiaryUserAlert($beneficiaryOrder, 'لم يتم الاجتياز في الاختبار. متوسط الدرجة: ' . ($test['average'] ?? 0) . '%');
+            $this->appendHistory($dynamicServiceOrder, self::STEP_TESTING, self::ACTION_SUBMIT_TEST, $test);
+            $this->trainingService->notifyBeneficiaryUserAlert(
+                $beneficiaryOrder,
+                'تم حفظ نتيجة الاختبار. نرجو تعبئة استبيان تقييم الرضا من صفحة الطلب.'
+            );
+
+            return;
+        }
+
+        $message = ! empty($test['needs_device'])
+            ? 'تم الاجتياز. يرجى إكمال استبيان الرضا قبل استلام الجهاز.'
+            : 'تم الاجتياز. يرجى إكمال استبيان الرضا قبل إصدار الشهادة.';
+
+        if (! empty($test['needs_device'])) {
+            $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+                'warehouse_request' => [
+                    'status' => 'pending',
+                    'requested_at' => now()->toDateTimeString(),
+                    'requested_by' => auth()->id(),
+                ],
+            ]);
+            $this->trainingService->notifyStaffUserAlert(
+                'المستفيد #' . $beneficiaryOrder->id . ' اجتاز الاختبار ويحتاج جهاز. بانتظار إكمال الرضا لبدء إجراءات المخزون.',
+                route('admin.beneficiary-orders.show', $beneficiaryOrder)
+            );
+        } else {
+            $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+                'certificate' => [
+                    'pending' => true,
+                    'requested_at' => now()->toDateTimeString(),
+                ],
+            ]);
+        }
+
+        $this->trainingService->notifyBeneficiaryUserAlert($beneficiaryOrder, $message);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'يرجى تعبئة استبيان تقييم الرضا مباشرة بعد نتيجة الاختبار.'
+        );
+        $this->appendHistory($dynamicServiceOrder, self::STEP_TESTING, self::ACTION_SUBMIT_TEST, $test);
+    }
+
+    protected function handleSatisfactionComplete(DynamicServiceOrder $dynamicServiceOrder, array $data): void
+    {
+        $existing = $dynamicServiceOrder->workflow_data['test'] ?? [];
+        $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+            'test' => array_merge($existing, ['satisfaction_completed' => true]),
+        ]);
+        $workflowData = $dynamicServiceOrder->fresh()->workflow_data ?? [];
+        $beneficiaryOrder = $dynamicServiceOrder->beneficiaryOrder;
+        if ($beneficiaryOrder) {
+            if (!empty($workflowData['test']['needs_device'])) {
+                $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+                    'warehouse_request' => array_merge($workflowData['warehouse_request'] ?? [], [
+                        'status' => 'ready_for_delivery',
+                        'ready_at' => now()->toDateTimeString(),
+                    ]),
+                ]);
+                $this->trainingService->notifyStaffUserAlert(
+                    'تم إكمال الرضا للمستفيد #' . $beneficiaryOrder->id . '. يمكن لقسم المخزون بدء تسليم الجهاز.',
+                    route('admin.beneficiary-orders.show', $beneficiaryOrder)
+                );
+                $this->trainingService->notifyBeneficiaryUserAlert(
+                    $beneficiaryOrder,
+                    'تم استلام تقييم الرضا. سيتم التواصل معكم من قسم المخزون لتسليم الجهاز.'
+                );
+            } else {
+                $this->trainingService->mergeWorkflowData($dynamicServiceOrder, [
+                    'certificate' => [
+                        'issued' => true,
+                        'issued_at' => now()->toDateTimeString(),
+                    ],
+                ]);
+                $this->trainingService->notifyBeneficiaryUserAlert(
+                    $beneficiaryOrder,
+                    'تم اعتماد إصدار الشهادة بعد إكمال استبيان الرضا. يمكنكم مراجعة حسابكم.'
+                );
+            }
+        }
+
+        $this->appendHistory($dynamicServiceOrder, self::STEP_TESTING, self::ACTION_COMPLETE_SATISFACTION);
+    }
+
+    protected function handleGroupInitialApproval(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder): void
+    {
+        $this->approveAndMove($beneficiaryOrder, $dynamicServiceOrder, self::STEP_SEND_MEETING_SCHEDULE, 1);
+        $this->trainingService->notifyBeneficiaryUserAlert(
+            $beneficiaryOrder,
+            'تم قبول طلبكم. سيتم إشعاركم بمواعيد البرنامج ورابط سداد الرسوم (إن وجدت) أو رابط الاختبارات القبلية.'
+        );
+    }
+
+    protected function handleGroupSchedule(BeneficiaryOrder $beneficiaryOrder, DynamicServiceOrder $dynamicServiceOrder, DynamicService $service, array $data): void
+    {
+        $schedule = $data['group_schedule'] ?? [];
+        $groupStats = $this->trainingService->getGroupWorkflowStats($service);
+        if (!($groupStats['canScheduleMeetings'] ?? false)) {
+            throw ValidationException::withMessages([
+                'schedule_start_date' => 'لا يمكن تحديد جدول اللقاءات قبل اكتمال اعتماد جميع المتقدمين.',
+            ]);
+        }
+
+        $groupOrders = $this->trainingService->approvedGroupOrdersForScheduling($service);
+        foreach ($groupOrders as $groupOrder) {
+            $this->trainingService->mergeWorkflowData($groupOrder, $data);
+            $this->moveToStep($groupOrder, self::STEP_START_PROGRAM, 2);
+            $this->appendHistory($groupOrder, self::STEP_START_PROGRAM, self::ACTION_SUBMIT_GROUP_SCHEDULE, $schedule);
+        }
+
+        $message = 'تم تحديد جدول اللقاءات من ' . ($schedule['start_date'] ?? '') . ' إلى ' . ($schedule['end_date'] ?? '') .
+            '، الأيام: ' . implode('، ', $schedule['days'] ?? []) .
+            '، من ' . ($schedule['start_time'] ?? '') . ' إلى ' . ($schedule['end_time'] ?? '') .
+            '. يمكنكم الاطلاع على باركود الحضور من صفحة الطلب.';
+
+        $this->trainingService->notifyGroupBeneficiaries($service, $message);
+    }
+}
