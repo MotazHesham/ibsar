@@ -110,12 +110,18 @@ class BeneficiaryImportController extends Controller
             $csvData = $this->readCsvFile($filePath, false);
             $results = $this->processCsvData($csvData, $columnMapping, $handleColumn, $csvDateFormat);
 
-            // Clean up temp file
-            Storage::delete($filePath);
+            $hasFailures = !empty($results['failed_rows']);
+
+            // Keep temp file when there are failed rows so the user can retry import
+            if (!$hasFailures) {
+                Storage::delete($filePath);
+            }
 
             return response()->json([
                 'success' => true,
-                'results' => $results
+                'results' => $results,
+                'can_retry' => $hasFailures,
+                'file_path' => $hasFailures ? $filePath : null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -373,10 +379,10 @@ class BeneficiaryImportController extends Controller
                 }
             }
 
-            if (str_ends_with($column, '_id') && ctype_digit($raw)) {
-                $data[$column] = $raw;
-                continue;
-            }
+            // if (str_ends_with($column, '_id') && ctype_digit($raw)) {
+            //     $data[$column] = $raw;
+            //     continue;
+            // }
 
             if (isset($config['model'])) {
                 $record = $config['model']::query()

@@ -133,6 +133,52 @@
             let csvData = null;
             let databaseColumns = null;
             let filePath = null;
+            let csvHeaders = null;
+            let lastImportSettings = null;
+
+            function collectImportSettings() {
+                const columnMapping = {};
+                const handleColumn = $('#handle_column').val();
+
+                $('.column-mapping-select').each(function() {
+                    const dbColumn = $(this).data('db-column');
+                    const csvColumn = $(this).val();
+                    if (csvColumn) {
+                        columnMapping[dbColumn] = csvColumn;
+                    }
+                });
+
+                return {
+                    columnMapping: columnMapping,
+                    handleColumn: handleColumn,
+                    dateFormat: $('#csv_date_format').val(),
+                };
+            }
+
+            function restoreImportSettings(settings) {
+                if (!settings) {
+                    return;
+                }
+
+                $('#handle_column').val(settings.handleColumn || '');
+                if (settings.dateFormat) {
+                    $('#csv_date_format').val(settings.dateFormat);
+                }
+
+                $('.column-mapping-select').each(function() {
+                    const dbColumn = $(this).data('db-column');
+                    $(this).val(settings.columnMapping[dbColumn] || '');
+                });
+            }
+
+            function goBackToMapping() {
+                restoreImportSettings(lastImportSettings);
+                $('#step3').hide();
+                $('#step2').show();
+                $('html, body').animate({
+                    scrollTop: $('#step2').offset().top - 20
+                }, 300);
+            }
 
             // الخطوة 1: رفع الملف
             $('#uploadBtn').click(function() {
@@ -161,6 +207,8 @@
                             csvData = response.preview_data;
                             databaseColumns = response.database_columns;
                             filePath = response.file_path;
+                            csvHeaders = response.headers;
+                            lastImportSettings = null;
 
                             fillDateFormatSelect(
                                 response.date_format_options || {},
@@ -172,6 +220,7 @@
                             
                             $('#step1').hide();
                             $('#step2').show();
+                            $('#step3').hide();
                         } else {
                             alert('خطأ: ' + response.message);
                         }
@@ -192,13 +241,18 @@
             // العودة إلى الخطوة 1
             $('#backToStep1').click(function() {
                 $('#step2').hide();
+                $('#step3').hide();
                 $('#step1').show();
                 $('#csv_file').val('');
+                lastImportSettings = null;
+            });
+
+            $(document).on('click', '#retryImportBtn', function() {
+                goBackToMapping();
             });
 
             // معالجة الاستيراد
             $('#processBtn').click(function() {
-                const columnMapping = {};
                 const handleColumn = $('#handle_column').val();
 
                 if (!handleColumn) {
@@ -206,18 +260,14 @@
                     return;
                 }
 
-                $('.column-mapping-select').each(function() {
-                    const dbColumn = $(this).data('db-column');
-                    const csvColumn = $(this).val();
-                    if (csvColumn) {
-                        columnMapping[dbColumn] = csvColumn;
-                    }
-                });
+                const columnMapping = collectImportSettings().columnMapping;
 
                 if (Object.keys(columnMapping).length === 0) {
                     alert('يرجى تعيين عمود واحد على الأقل');
                     return;
                 }
+
+                lastImportSettings = collectImportSettings();
 
                 $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...');
 
@@ -226,14 +276,17 @@
                     type: 'POST',
                     data: {
                         file_path: filePath,
-                        column_mapping: columnMapping,
-                        handle_column: handleColumn,
-                        date_format: $('#csv_date_format').val(),
+                        column_mapping: lastImportSettings.columnMapping,
+                        handle_column: lastImportSettings.handleColumn,
+                        date_format: lastImportSettings.dateFormat,
                         _token: '{{ csrf_token() }}'
                     },
                     success: function(response) {
                         if (response.success) {
-                            displayResults(response.results);
+                            if (response.file_path) {
+                                filePath = response.file_path;
+                            }
+                            displayResults(response.results, response.can_retry);
                             $('#step2').hide();
                             $('#step3').show();
                         } else {
@@ -297,13 +350,13 @@
                 $('#previewBody').html(bodyHtml);
             }
 
-            function generateColumnMapping(csvHeaders, dbColumns) {
+            function generateColumnMapping(headers, dbColumns, savedSettings) {
                 let html = '<div class="form-group">';
                 html += '<label for="handle_column">عمود المعرف (المعرف الفريد) *</label>';
                 html += '<select id="handle_column" class="form-control" required>';
                 html += '<option value="">اختر عمود للتعريف الفريد</option>';
                 let count = 0;
-                csvHeaders.forEach(function(header) {
+                headers.forEach(function(header) {
                     html += '<option value="' + count + '">' + header + '</option>';
                     count++;
                 });
@@ -320,7 +373,7 @@
                     html += '<select class="form-control column-mapping-select" data-db-column="' + dbColumn + '">';
                     html += '<option value="">-- غير معين --</option>';
                     let count = 0;
-                    csvHeaders.forEach(function(header) {
+                    headers.forEach(function(header) {
                         html += '<option value="' + count + '">' + header + '</option>';
                         count++;
                     }); 
@@ -329,9 +382,13 @@
                 });
                 html += '</div>';
                 $('#columnMapping').html(html);
+
+                if (savedSettings) {
+                    restoreImportSettings(savedSettings);
+                }
             }
 
-            function displayResults(results) {
+            function displayResults(results, canRetry) {
                 let html = '<div class="alert alert-success">';
                 html += '<h6>ملخص الاستيراد</h6>';
                 html += '<ul class="mb-0">';
@@ -382,10 +439,15 @@
                 }
 
                 html += '<div class="mt-3">';
-                html += '<a href="{{ route("admin.beneficiaries.index") }}" class="btn btn-primary">';
+                if (canRetry && results.failed_rows && results.failed_rows.length > 0) {
+                    html += '<button type="button" id="retryImportBtn" class="btn btn-warning">';
+                    html += '<i class="fas fa-redo"></i> إعادة المحاولة (تعديل تعيين الأعمدة)';
+                    html += '</button>';
+                }
+                html += '<a href="{{ route("admin.beneficiaries.index") }}" class="btn btn-primary ms-2">';
                 html += '<i class="fas fa-list"></i> العودة إلى قائمة المستفيدين';
                 html += '</a>';
-                html += '<a href="{{ route("admin.beneficiaries.import") }}" class="btn btn-secondary ml-2">';
+                html += '<a href="{{ route("admin.beneficiaries.import") }}" class="btn btn-secondary ms-2">';
                 html += '<i class="fas fa-upload"></i> استيراد ملف آخر';
                 html += '</a>';
                 html += '</div>';
