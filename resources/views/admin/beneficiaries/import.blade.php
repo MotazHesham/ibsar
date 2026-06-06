@@ -247,7 +247,7 @@
                 lastImportSettings = null;
             });
 
-            $(document).on('click', '#retryImportBtn', function() {
+            $(document).on('click', '#retryImportBtn, #retryImportBtnBottom', function() {
                 goBackToMapping();
             });
 
@@ -286,7 +286,7 @@
                             if (response.file_path) {
                                 filePath = response.file_path;
                             }
-                            displayResults(response.results, response.can_retry);
+                            displayResults(response.results);
                             $('#step2').hide();
                             $('#step3').show();
                         } else {
@@ -388,41 +388,63 @@
                 }
             }
 
-            function displayResults(results, canRetry) {
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function displayResults(results) {
+                const failedRows = results.failed_rows || [];
+                const hasFailures = failedRows.length > 0;
+                const canRetryImport = hasFailures && !!filePath;
+
                 let html = '<div class="alert alert-success">';
                 html += '<h6>ملخص الاستيراد</h6>';
                 html += '<ul class="mb-0">';
-                html += '<li>السجلات المستوردة: ' + results.imported + '</li>';
-                html += '<li>السجلات المحدثة: ' + results.updated + '</li>';
-                if (results.failed_rows && results.failed_rows.length > 0) {
-                    html += '<li>الصفوف الفاشلة: ' + results.failed_rows.length + '</li>';
+                html += '<li>السجلات المستوردة: ' + (results.imported || 0) + '</li>';
+                html += '<li>السجلات المحدثة: ' + (results.updated || 0) + '</li>';
+                if (hasFailures) {
+                    html += '<li>الصفوف الفاشلة: ' + failedRows.length + '</li>';
                 }
                 html += '</ul>';
                 html += '</div>';
 
-                if (results.failed_rows && results.failed_rows.length > 0) {
+                if (hasFailures) {
                     html += '<div class="alert alert-danger">';
-                    html += '<h6>تفاصيل الصفوف الفاشلة:</h6>';
+                    html += '<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">';
+                    html += '<h6 class="mb-0">تفاصيل الصفوف الفاشلة:</h6>';
+                    if (canRetryImport) {
+                        html += '<button type="button" id="retryImportBtn" class="btn btn-warning">';
+                        html += '<i class="fas fa-redo"></i> إعادة المحاولة (تعديل تعيين الأعمدة)';
+                        html += '</button>';
+                    } else {
+                        html += '<small class="text-muted">لم يعد ملف CSV متاحاً على الخادم. ارفع الملف من جديد للمحاولة.</small>';
+                    }
+                    html += '</div>';
                     html += '<div class="table-responsive">';
                     html += '<table class="table table-sm table-bordered">';
                     html += '<thead>';
                     html += '<tr>';
-                    html += '<th>الصف</th>'; 
+                    html += '<th>الصف</th>';
                     html += '<th>الخطأ</th>';
                     html += '<th>البيانات</th>';
                     html += '</tr>';
                     html += '</thead>';
                     html += '<tbody>';
-                    
-                    results.failed_rows.forEach(function(failedRow) {
+
+                    failedRows.forEach(function(failedRow) {
                         html += '<tr>';
-                        html += '<td>' + failedRow.row + '</td>'; 
-                        html += '<td><span class="text-danger">' + failedRow.error + '</span></td>';
+                        html += '<td>' + escapeHtml(failedRow.row) + '</td>';
+                        html += '<td><span class="text-danger">' + escapeHtml(failedRow.error) + '</span></td>';
                         html += '<td>';
                         if (failedRow.data && Object.keys(failedRow.data).length > 0) {
                             html += '<small>';
                             Object.keys(failedRow.data).forEach(function(key) {
-                                html += '<strong>' + key + ':</strong> ' + failedRow.data[key] + '<br>';
+                                html += '<strong>' + escapeHtml(key) + ':</strong> ' + escapeHtml(failedRow.data[key]) + '<br>';
                             });
                             html += '</small>';
                         } else {
@@ -431,23 +453,23 @@
                         html += '</td>';
                         html += '</tr>';
                     });
-                    
+
                     html += '</tbody>';
                     html += '</table>';
                     html += '</div>';
                     html += '</div>';
                 }
 
-                html += '<div class="mt-3">';
-                if (canRetry && results.failed_rows && results.failed_rows.length > 0) {
-                    html += '<button type="button" id="retryImportBtn" class="btn btn-warning">';
+                html += '<div class="mt-3 d-flex flex-wrap gap-2">';
+                if (canRetryImport) {
+                    html += '<button type="button" id="retryImportBtnBottom" class="btn btn-warning">';
                     html += '<i class="fas fa-redo"></i> إعادة المحاولة (تعديل تعيين الأعمدة)';
                     html += '</button>';
                 }
-                html += '<a href="{{ route("admin.beneficiaries.index") }}" class="btn btn-primary ms-2">';
+                html += '<a href="{{ route("admin.beneficiaries.index") }}" class="btn btn-primary">';
                 html += '<i class="fas fa-list"></i> العودة إلى قائمة المستفيدين';
                 html += '</a>';
-                html += '<a href="{{ route("admin.beneficiaries.import") }}" class="btn btn-secondary ms-2">';
+                html += '<a href="{{ route("admin.beneficiaries.import") }}" class="btn btn-secondary">';
                 html += '<i class="fas fa-upload"></i> استيراد ملف آخر';
                 html += '</a>';
                 html += '</div>';

@@ -110,7 +110,7 @@ class BeneficiaryImportController extends Controller
             $csvData = $this->readCsvFile($filePath, false);
             $results = $this->processCsvData($csvData, $columnMapping, $handleColumn, $csvDateFormat);
 
-            $hasFailures = !empty($results['failed_rows']);
+            $hasFailures = count($results['failed_rows']) > 0;
 
             // Keep temp file when there are failed rows so the user can retry import
             if (!$hasFailures) {
