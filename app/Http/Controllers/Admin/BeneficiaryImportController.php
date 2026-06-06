@@ -303,8 +303,12 @@ class BeneficiaryImportController extends Controller
                 ],
             ],
             'health_condition_id' => [
+                'model' => HealthCondition::class,
                 'aliases' => [
                     'سليم' => null,
+                    'لا' => null,
+                    'لا يوجد' => null,
+                    '-' => null,
                     'مريض' => 15,
                 ],
             ],
@@ -367,8 +371,13 @@ class BeneficiaryImportController extends Controller
                 continue;
             }
 
-            if (isset($aliases[$raw])) {
-                $data[$column] = $aliases[$raw];
+            if (array_key_exists($raw, $aliases)) {
+                $aliasValue = $aliases[$raw];
+                if ($aliasValue === null || $aliasValue === '') {
+                    unset($data[$column]);
+                } else {
+                    $data[$column] = (string) $aliasValue;
+                }
                 continue;
             }
 
