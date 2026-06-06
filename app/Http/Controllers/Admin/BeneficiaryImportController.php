@@ -50,7 +50,7 @@ class BeneficiaryImportController extends Controller
 
             // Read CSV file
             $csvData = $this->readCsvFile($path);
-            
+
             if (empty($csvData)) {
                 return response()->json([
                     'success' => false,
@@ -75,7 +75,6 @@ class BeneficiaryImportController extends Controller
                 'date_format_options' => $this->importDateFormatOptions(),
                 'default_date_format' => config('panel.date_format'),
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -94,7 +93,7 @@ class BeneficiaryImportController extends Controller
             'handle_column' => 'required|string',
             'date_format' => ['nullable', Rule::in($this->allowedImportDateFormats())],
         ]);
-        
+
         try {
             $filePath = $request->input('file_path');
             $columnMapping = $request->input('column_mapping');
@@ -118,7 +117,6 @@ class BeneficiaryImportController extends Controller
                 'success' => true,
                 'results' => $results
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -131,15 +129,15 @@ class BeneficiaryImportController extends Controller
     {
         $data = [];
         $file = Storage::path($filePath);
-        
+
         if (($handle = fopen($file, "r")) !== FALSE) {
             $headers = fgetcsv($handle);
-            
+
             while (($row = fgetcsv($handle)) !== FALSE) {
                 if (count($row) === count($headers)) {
-                    if($keyName){
+                    if ($keyName) {
                         $data[] = array_combine($headers, $row);
-                    }else{
+                    } else {
                         $data[] = $row;
                     }
                 }
@@ -159,10 +157,10 @@ class BeneficiaryImportController extends Controller
             'password' => trans('cruds.user.fields.password'),
             'phone' => trans('cruds.user.fields.phone'),
             'phone_2' => trans('cruds.user.fields.phone_2'),
-            'identity_num' => trans('cruds.user.fields.identity_num'), 
+            'identity_num' => trans('cruds.user.fields.identity_num'),
             'nationality_id' => trans('cruds.beneficiary.fields.nationality'),
             'characteristic_of_nationality' => trans('cruds.beneficiary.fields.characteristic_of_nationality'),
-            'marital_status_id' => trans('cruds.beneficiary.fields.marital_status'), 
+            'marital_status_id' => trans('cruds.beneficiary.fields.marital_status'),
             'dob' => trans('cruds.beneficiary.fields.dob') . ' (' . config('panel.date_format') . ')',
             'martial_status_date' => trans('cruds.beneficiary.fields.martial_status_date') . ' (' . config('panel.date_format') . ')',
             'address' => trans('cruds.beneficiary.fields.address'),
@@ -175,11 +173,261 @@ class BeneficiaryImportController extends Controller
             'building_number' => trans('cruds.beneficiary.fields.building_number'),
             'floor_number' => trans('cruds.beneficiary.fields.floor_number'),
             'building_additional_number' => trans('cruds.beneficiary.fields.building_additional_number'),
-            'postal_code' => trans('cruds.beneficiary.fields.postal_code'),   
+            'postal_code' => trans('cruds.beneficiary.fields.postal_code'),
             'total_incomes' => trans('cruds.beneficiary.fields.total_incomes'),
-            'total_expenses' => trans('cruds.beneficiary.fields.total_expenses'),  
+            'total_expenses' => trans('cruds.beneficiary.fields.total_expenses'),
+            'profile_status' => trans('cruds.beneficiary.fields.profile_status'),
+            'file_category' => trans('cruds.beneficiary.fields.file_category'),
+            'traits' => trans('cruds.beneficiary.fields.traits'),
+            'needs' => trans('cruds.beneficiary.fields.needs'),
+            'note' => trans('cruds.beneficiary.fields.note'),
+            'data_form_template' => trans('cruds.beneficiary.fields.data_form_template'),
+            'gender' => trans('cruds.beneficiary.fields.gender'),
+            'children_count' => trans('cruds.beneficiary.fields.children_count'),
+            'health_condition_id' => trans('cruds.beneficiary.fields.health_condition'),
+            'custom_health_condition' => trans('cruds.beneficiary.fields.custom_health_condition'),
+            'disability_type_id' => trans('cruds.beneficiary.fields.disability_type'),
+            'custom_disability_type' => trans('cruds.beneficiary.fields.custom_disability_type'),
+            'job_type_id' => trans('cruds.beneficiary.fields.job_type'),
+            'job_details' => trans('cruds.beneficiary.job_details.job_title'),
+            'educational_qualification_id' => trans('cruds.beneficiary.fields.educational_qualification'),
             'created_at' => trans('cruds.beneficiary.fields.created_at') . ' (نفس صيغة التاريخ المختارة للاستيراد)',
         ];
+    }
+
+    /**
+     * CSV Arabic labels (and aliases) mapped to internal select keys per column.
+     *
+     * @return array<string, array{select: array<string, string>, aliases?: array<string, string>}>
+     */
+    private function importSelectValueMappings(): array
+    {
+        return [
+            'profile_status' => [
+                'select' => Beneficiary::PROFILE_STATUS_SELECT,
+                'aliases' => [
+                    'معتمد' => 'approved',
+                    'قيد المراجعة' => 'in_review',
+                ],
+            ],
+            'file_category' => [
+                'select' => Beneficiary::FILE_CATEGORY_SELECT,
+                'aliases' => [
+                    'أ' => 'a',
+                    'ب' => 'b',
+                    'ج' => 'c',
+                    'د' => 'd',
+                    'مؤقت' => 'temporary',
+                ],
+            ],
+            'data_form_template' => [
+                'select' => Beneficiary::DATA_FORM_TEMPLATE_SELECT,
+                'aliases' => [
+                    'النموذج الافتراضي' => 'default',
+                    'نموذج العمليات' => 'operations',
+                    'نموذج طفل' => 'child',
+                ],
+            ],
+            'gender' => [
+                'select' => Beneficiary::GENDER_SELECT,
+                'aliases' => [
+                    'ذكر' => 'male',
+                    'أنثى' => 'female',
+                ],
+            ],
+            'marital_status_id' => [
+                'aliases' => [
+                    'اخري' => '5',
+                    'ارملة' => '2',
+                    'أعزب' => '4',
+                    'الزوجة متوفية' => '2',
+                    'عزباء' => '4',
+                    'متزوج' => '3',
+                    'متزوجة' => '3',
+                    'مطلقة' => '1',
+                ],
+            ],
+            'nationality_id' => [
+                'aliases' => [
+                    'إثيوبيا' => '68',
+                    'إريتريا' => '75',
+                    'أفغانستان' => '37',
+                    'الأردن' => '6',
+                    'السعودية' => '1',
+                    'السودان' => '3',
+                    'الصومال' => '20',
+                    'العراق' => '9',
+                    'الفلبين' => '31',
+                    'المغرب' => '17',
+                    'المملكة المتحدة' => '38',
+                    'النجير' => '65',
+                    'الهند' => '25',
+                    'الولايات المتحدة الأمريكية' => '56',
+                    'اليمن' => '4',
+                    'إندونيسيا' => '32',
+                    'باكستان' => '24',
+                    'بدون جنسية' => '75',
+                    'بروناي' => '75',
+                    'بنغلاديش' => '35',
+                    'تشاد' => '75',
+                    'جنوب إفريقيا' => '66',
+                    'سوريا' => '5',
+                    'فلسطين' => '7',
+                    'كينيا' => '67',
+                    'لبنان' => '8',
+                    'مالي' => '75',
+                    'مصر' => '2',
+                    'ميانمار' => '75',
+                    'نيجيريا' => '65',
+                ],
+            ],
+            'city_id' => [
+                'aliases' => [
+                    'الجموم' => '61',
+                    'الطائف' => '65',
+                    'الرياض' => '21',
+                    'القنفذة' => '62',
+                    'الكامل' => '',
+                    'الليث' => '',
+                    'بحرة' => '58',
+                    'تربة' => '64',
+                    'جدة' => '58',
+                    'رابغ' => '59',
+                    'مكة المكرمة' => '57',
+                ],
+            ],
+            'health_condition_id' => [
+                'aliases' => [
+                    'سليم' => null,
+                    'مريض' => 15,
+                ],
+            ],
+            'educational_qualification_id' => [
+                'aliases' => [
+                    'ابتدائي' => 3,
+                    'أمي' => 1,
+                    'ثانوي' => 5,
+                    'جامعي' => 14,
+                    'دبلوم' => 6,
+                    'ماجستير' => 8,
+                    'دكتوراه' => 9,
+                    'يقرأ ويكتب' => 2,
+                    'متوسط' => 4,
+                ],
+            ],
+            'job_type_id' => [
+                'aliases' => [
+                    'اعمال حرة' => 15,
+                    'ربة منزل' => 14,
+                    'متقاعد' => 12,
+                    'طالب' => 13,
+                    'عاطل' => 11,
+                    'موظف' => 16,
+                ],
+            ],
+            'disability_type_id' => [
+                'aliases' => [
+                    'لا' => null,
+                    'نعم' => 13,
+                ],
+            ],
+
+        ];
+    }
+
+    /**
+     * Convert Arabic CSV select labels to internal database keys.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function normalizeImportedSelectValues(array &$data): void
+    {
+        foreach ($this->importSelectValueMappings() as $column => $config) {
+            if (!array_key_exists($column, $data)) {
+                continue;
+            }
+
+            $raw = trim((string) ($data[$column] ?? ''));
+            if ($raw === '') {
+                unset($data[$column]);
+                continue;
+            }
+
+            $select = $config['select'] ?? [];
+            $aliases = $config['aliases'] ?? [];
+
+            if (array_key_exists($raw, $select)) {
+                $data[$column] = $raw;
+                continue;
+            }
+
+            if (isset($aliases[$raw])) {
+                $data[$column] = $aliases[$raw];
+                continue;
+            }
+
+            foreach ($select as $key => $label) {
+                if (trim($label) === $raw) {
+                    $data[$column] = $key;
+                    continue 2;
+                }
+            }
+
+            if (str_ends_with($column, '_id') && ctype_digit($raw)) {
+                $data[$column] = $raw;
+                continue;
+            }
+
+            if (isset($config['model'])) {
+                $record = $config['model']::query()
+                    ->where('name->ar', $raw)
+                    ->orWhere('name->en', $raw)
+                    ->first();
+
+                if ($record) {
+                    $data[$column] = (string) $record->id;
+                    continue;
+                }
+            }
+
+            throw new \Exception(sprintf('Invalid %s value "%s"', $column, $raw));
+        }
+    }
+
+    /**
+     * Wrap a plain CSV job title into the job_details JSON structure stored on beneficiaries.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function normalizeImportedJobDetails(array &$data): void
+    {
+        if (!array_key_exists('job_details', $data)) {
+            return;
+        }
+
+        $raw = trim((string) ($data['job_details'] ?? ''));
+        if ($raw === '') {
+            unset($data['job_details']);
+            return;
+        }
+
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            $data['job_details'] = json_encode([
+                'company_name' => $decoded['company_name'] ?? null,
+                'job_title' => $decoded['job_title'] ?? null,
+                'job_phone' => $decoded['job_phone'] ?? null,
+                'job_address' => $decoded['job_address'] ?? null,
+            ]);
+            return;
+        }
+
+        $data['job_details'] = json_encode([
+            'company_name' => null,
+            'job_title' => $raw,
+            'job_phone' => null,
+            'job_address' => null,
+        ]);
     }
 
     /**
@@ -218,9 +466,11 @@ class BeneficiaryImportController extends Controller
         // Process each row individually without transaction to allow partial success
         foreach ($csvData as $index => $row) {
             $rowNumber = $index + 2; // +2 because index starts at 0 and we skip header
-            
+
             try {
                 $mappedData = $this->mapRowData($row, $columnMapping);
+                $this->normalizeImportedSelectValues($mappedData);
+                $this->normalizeImportedJobDetails($mappedData);
                 $this->normalizeImportedDates($mappedData, $csvDateFormat);
                 $handle = $row[$handleColumn] ?? null;
 
@@ -248,7 +498,6 @@ class BeneficiaryImportController extends Controller
                     $this->createBeneficiary($mappedData);
                     $results['imported']++;
                 }
-
             } catch (\Exception $e) {
                 $errorMessage = $e->getMessage();
                 $results['errors'][] = "Row {$rowNumber}: {$errorMessage}";
@@ -270,13 +519,13 @@ class BeneficiaryImportController extends Controller
 
         foreach ($columnMapping as $dbColumn => $csvColumn) {
             if (!is_null($csvColumn) && isset($row[$csvColumn])) {
-                if($dbColumn == 'phone' || $dbColumn == 'phone_2'){
+                if ($dbColumn == 'phone' || $dbColumn == 'phone_2') {
                     // if start with 5 and length is 9, then add 05 to the beginning
-                    if(substr($row[$csvColumn], 0, 1) == '5' && strlen($row[$csvColumn]) == 9){
-                        $row[$csvColumn] = '05' . substr($row[$csvColumn], 1); 
+                    if (substr($row[$csvColumn], 0, 1) == '5' && strlen($row[$csvColumn]) == 9) {
+                        $row[$csvColumn] = '05' . substr($row[$csvColumn], 1);
                     }
                     $mappedData[$dbColumn] = $row[$csvColumn];
-                }else{
+                } else {
                     $mappedData[$dbColumn] = $row[$csvColumn];
                 }
             }
@@ -363,8 +612,8 @@ class BeneficiaryImportController extends Controller
     }
 
     private function validateData($data)
-    { 
-        $rules = [ 
+    {
+        $rules = [
             'name' => 'required',
             'password' => 'required|min:8',
             'email' => 'nullable|email',
@@ -374,16 +623,26 @@ class BeneficiaryImportController extends Controller
             'nationality_id' => 'nullable|exists:nationalities,id',
             'marital_status_id' => 'nullable|exists:marital_statuses,id',
             'job_type_id' => 'nullable|exists:job_types,id',
+            'job_details' => 'nullable|string',
             'region_id' => 'nullable|exists:regions,id',
             'city_id' => 'nullable|exists:cities,id',
             'district_id' => 'nullable|exists:districts,id',
-            'educational_qualification_id' => 'nullable|exists:educational_qualifications,id', 
-            'can_work' => 'nullable|in:' . implode(',', array_keys(Beneficiary::CAN_WORK_SELECT)), 
+            'educational_qualification_id' => 'nullable|exists:educational_qualifications,id',
+            'health_condition_id' => 'nullable|exists:health_conditions,id',
+            'custom_health_condition' => 'nullable|string',
+            'profile_status' => 'nullable|in:' . implode(',', array_keys(Beneficiary::PROFILE_STATUS_SELECT)),
+            'file_category' => 'nullable|in:' . implode(',', array_keys(Beneficiary::FILE_CATEGORY_SELECT)),
+            'traits' => 'nullable|string',
+            'needs' => 'nullable|string',
+            'note' => 'nullable|string',
+            'data_form_template' => 'nullable|in:' . implode(',', array_keys(Beneficiary::DATA_FORM_TEMPLATE_SELECT)),
+            'gender' => 'nullable|in:' . implode(',', array_keys(Beneficiary::GENDER_SELECT)),
+            'children_count' => 'nullable|integer|min:0',
             'dob' => 'nullable|date_format:' . config('panel.date_format'),
-            'martial_status_date' => 'nullable|date_format:' . config('panel.date_format'), 
-            'building_number' => 'nullable|max:4', 
-            'building_additional_number' => 'nullable|max:4', 
-            'postal_code' => 'nullable|max:5',   
+            'martial_status_date' => 'nullable|date_format:' . config('panel.date_format'),
+            'building_number' => 'nullable|max:4',
+            'building_additional_number' => 'nullable|max:4',
+            'postal_code' => 'nullable|max:5',
             'created_at' => 'nullable|date_format:Y-m-d',
         ];
 
@@ -396,7 +655,7 @@ class BeneficiaryImportController extends Controller
                 $errorMessages[] = $error;
             }
             throw new \Exception('Validation failed: ' . implode(', ', $errorMessages));
-        } 
+        }
 
         return $data;
     }
@@ -404,10 +663,10 @@ class BeneficiaryImportController extends Controller
     private function createBeneficiary($data)
     {
         $data = $this->validateData($data);
-        
-        // Set default values
-        $data['profile_status'] = 'uncompleted';
-        $data['form_step'] = 'login_information'; 
+
+        // Set default values when not provided in CSV
+        $data['profile_status'] = $data['profile_status'] ?? 'uncompleted';
+        $data['form_step'] = $data['form_step'] ?? 'login_information';
 
         $user = User::create([
             'name' => $data['name'],
@@ -418,7 +677,7 @@ class BeneficiaryImportController extends Controller
             'identity_num' => $data['identity_num'],
             'approved' => 1,
             'user_type' => 'beneficiary',
-        ]); 
+        ]);
 
         $beneficiary = Beneficiary::create([
             'handle' => $data['handle'],
@@ -439,17 +698,29 @@ class BeneficiaryImportController extends Controller
             'street' => $data['street'] ?? null,
             'building_number' => $data['building_number'] ?? null,
             'building_additional_number' => $data['building_additional_number'] ?? null,
-            'postal_code' => $data['postal_code'] ?? null, 
+            'postal_code' => $data['postal_code'] ?? null,
 
             // Work Information
             'educational_qualification_id' => $data['educational_qualification_id'] ?? null,
             'job_type_id' => $data['job_type_id'] ?? null,
+            'job_details' => $data['job_details'] ?? null,
             'can_work' => $data['can_work'] ?? null,
+            'health_condition_id' => $data['health_condition_id'] ?? null,
+            'custom_health_condition' => $data['custom_health_condition'] ?? null,
 
             // Economic Information
             'total_incomes' => $data['total_incomes'] ?? null,
-            'total_expenses' => $data['total_expenses'] ?? null, 
+            'total_expenses' => $data['total_expenses'] ?? null,
 
+            'profile_status' => $data['profile_status'],
+            'file_category' => $data['file_category'] ?? null,
+            'traits' => $data['traits'] ?? null,
+            'needs' => $data['needs'] ?? null,
+            'note' => $data['note'] ?? null,
+            'data_form_template' => $data['data_form_template'] ?? null,
+            'gender' => $data['gender'] ?? null,
+            'children_count' => $data['children_count'] ?? 0,
+            'form_step' => $data['form_step'],
             'created_at' => $data['created_at'] ?? date('Y-m-d'),
         ]);
         return $beneficiary;
@@ -465,7 +736,7 @@ class BeneficiaryImportController extends Controller
             'password' => $data['password'],
             'phone' => $data['phone'],
             'phone_2' => $data['phone_2'] ?? null,
-            'identity_num' => $data['identity_num'], 
+            'identity_num' => $data['identity_num'],
         ]);
 
         $beneficiary->update([
@@ -485,18 +756,30 @@ class BeneficiaryImportController extends Controller
             'street' => $data['street'] ?? null,
             'building_number' => $data['building_number'] ?? null,
             'building_additional_number' => $data['building_additional_number'] ?? null,
-            'postal_code' => $data['postal_code'] ?? null, 
+            'postal_code' => $data['postal_code'] ?? null,
 
             // Work Information
             'educational_qualification_id' => $data['educational_qualification_id'] ?? null,
             'job_type_id' => $data['job_type_id'] ?? null,
+            'job_details' => array_key_exists('job_details', $data) ? $data['job_details'] : $beneficiary->job_details,
             'can_work' => $data['can_work'] ?? null,
+            'health_condition_id' => $data['health_condition_id'] ?? null,
+            'custom_health_condition' => $data['custom_health_condition'] ?? null,
 
             // Economic Information
             'total_incomes' => $data['total_incomes'] ?? null,
-            'total_expenses' => $data['total_expenses'] ?? null, 
+            'total_expenses' => $data['total_expenses'] ?? null,
 
+            'profile_status' => $data['profile_status'] ?? $beneficiary->profile_status,
+            'file_category' => $data['file_category'] ?? $beneficiary->file_category,
+            'traits' => $data['traits'] ?? $beneficiary->traits,
+            'needs' => $data['needs'] ?? $beneficiary->needs,
+            'note' => $data['note'] ?? $beneficiary->note,
+            'data_form_template' => $data['data_form_template'] ?? $beneficiary->data_form_template,
+            'gender' => $data['gender'] ?? $beneficiary->gender,
+            'children_count' => array_key_exists('children_count', $data) ? $data['children_count'] : $beneficiary->children_count,
+            'form_step' => $data['form_step'] ?? $beneficiary->form_step,
             'created_at' => $data['created_at'] ?? date('Y-m-d'),
         ]);
     }
-} 
+}

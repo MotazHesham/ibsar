@@ -58,6 +58,25 @@ class Beneficiary extends Model
         'rejected' => 'مرفوض',
     ];
 
+    public const FILE_CATEGORY_SELECT = [
+        'a' => 'أ',
+        'b' => 'ب',
+        'c' => 'ج',
+        'd' => 'د',
+        'temporary' => 'مؤقت',
+    ];
+
+    public const DATA_FORM_TEMPLATE_SELECT = [
+        'default' => 'النموذج الافتراضي',
+        'operations' => 'نموذج العمليات',
+        'child' => 'نموذج طفل',
+    ];
+
+    public const GENDER_SELECT = [
+        'male' => 'ذكر',
+        'female' => 'انثى',
+    ];
+
     public const FORM_STEPS = [
         'login_information' => 'بيانات التسجيل',
         'basic_information' => 'بيانات الأساسية',
@@ -87,6 +106,13 @@ class Beneficiary extends Model
         'job_details',
         'educational_qualification_id',
         'profile_status',
+        'file_category',
+        'traits',
+        'needs',
+        'note',
+        'data_form_template',
+        'gender',
+        'children_count',
         'rejection_reason',
         'form_step',
         'characteristic_of_nationality',
@@ -133,6 +159,19 @@ class Beneficiary extends Model
     public function beneficiaryFamilies()
     {
         return $this->hasMany(BeneficiaryFamily::class, 'beneficiary_id', 'id');
+    }
+
+    public function syncChildrenCount(): int
+    {
+        $count = $this->beneficiaryFamilies()
+            ->whereHas('family_relationship', function ($query) {
+                $query->whereIn('name->ar', ['ابن', 'ابنة']);
+            })
+            ->count();
+
+        $this->update(['children_count' => $count]);
+
+        return $count;
     }
 
     public function beneficiaryFiles()
@@ -273,6 +312,12 @@ class Beneficiary extends Model
     {
         return [
             'profile_status',
+            'file_category',
+            'traits',
+            'needs',
+            'note',
+            'gender',
+            'children_count',
             'dob',
             'martial_status_date',
             'address',
@@ -343,6 +388,15 @@ class Beneficiary extends Model
 
             if (isset($data['profile_status']) && isset(self::PROFILE_STATUS_SELECT[$data['profile_status']])) {
                 $data['profile_status'] = self::PROFILE_STATUS_SELECT[$data['profile_status']];
+            }
+            if (isset($data['file_category']) && isset(self::FILE_CATEGORY_SELECT[$data['file_category']])) {
+                $data['file_category'] = self::FILE_CATEGORY_SELECT[$data['file_category']];
+            }
+            if (isset($data['data_form_template']) && isset(self::DATA_FORM_TEMPLATE_SELECT[$data['data_form_template']])) {
+                $data['data_form_template'] = self::DATA_FORM_TEMPLATE_SELECT[$data['data_form_template']];
+            }
+            if (isset($data['gender']) && isset(self::GENDER_SELECT[$data['gender']])) {
+                $data['gender'] = self::GENDER_SELECT[$data['gender']];
             }
             if (isset($data['can_work']) && isset(self::CAN_WORK_SELECT[$data['can_work']])) {
                 $data['can_work'] = self::CAN_WORK_SELECT[$data['can_work']];

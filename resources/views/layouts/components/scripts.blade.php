@@ -455,6 +455,10 @@
                                         location.reload();
                                    }
                               }
+
+                              if (typeof response.children_count !== 'undefined') {
+                                   $('#beneficiary-children-count').text(response.children_count);
+                              }
                               
                               $('#' + modalId).modal('hide');
                               submitBtn.html(originalBtnHtml);
@@ -534,6 +538,12 @@
                                         $('#' + trId).fadeOut(400, function() {
                                              $(this).remove();
                                         });
+                                   }
+                                   if (response.html && response.wrapper) {
+                                        $(response.wrapper).html(response.html);
+                                   }
+                                   if (typeof response.children_count !== 'undefined') {
+                                        $('#beneficiary-children-count').text(response.children_count);
                                    }
                                    if (response.message) {
                                         showToast(response.message, 'success', 'top');

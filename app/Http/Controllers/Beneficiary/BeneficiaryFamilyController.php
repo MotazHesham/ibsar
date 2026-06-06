@@ -65,12 +65,17 @@ class BeneficiaryFamilyController extends Controller
         if ($media = $request->input('ck-media', false)) {
             Media::whereIn('id', $media)->update(['model_id' => $beneficiaryFamily->id]);
         }
+
+        $beneficiary = Beneficiary::find($request->beneficiary_id);
+        $childrenCount = $beneficiary?->syncChildrenCount() ?? 0;
+
         $beneficiaryFamilies = BeneficiaryFamily::where('beneficiary_id', $request->beneficiary_id)->orderBy('id', 'desc')->get();
         $html = view('beneficiary.families.index', compact('beneficiaryFamilies'))->render();
 
         return response()->json([
             'html' => $html,
             'wrapper' => '#wrapper-family-information',
+            'children_count' => $childrenCount,
             'message' => trans('global.flash.created', ['title' => trans('cruds.beneficiaryFamily.title_singular')])
         ]);
     }
@@ -114,12 +119,15 @@ class BeneficiaryFamilyController extends Controller
             $beneficiaryFamily->photo->delete();
         }
 
+        $childrenCount = $beneficiaryFamily->beneficiary->syncChildrenCount();
+
         $beneficiaryFamilies = BeneficiaryFamily::where('beneficiary_id', $beneficiaryFamily->beneficiary_id)->orderBy('id', 'desc')->get();
         $html = view('beneficiary.families.index', compact('beneficiaryFamilies'))->render();
 
         return response()->json([
-            'html' => $html,  
+            'html' => $html,
             'wrapper' => '#wrapper-family-information',
+            'children_count' => $childrenCount,
             'message' => trans('global.flash.updated', ['title' => trans('cruds.beneficiaryFamily.title_singular')])
         ]);
     } 
@@ -129,12 +137,18 @@ class BeneficiaryFamilyController extends Controller
 
         $beneficiaryFamily = BeneficiaryFamily::find($request->id);
 
+        $beneficiary = $beneficiaryFamily->beneficiary;
         $beneficiaryFamily->delete();
 
-        $beneficiaryFamilies = BeneficiaryFamily::where('beneficiary_id', $beneficiaryFamily->beneficiary_id)->orderBy('id', 'desc')->get();
+        $childrenCount = $beneficiary->syncChildrenCount();
+
+        $beneficiaryFamilies = BeneficiaryFamily::where('beneficiary_id', $beneficiary->id)->orderBy('id', 'desc')->get();
         $html = view('beneficiary.families.index', compact('beneficiaryFamilies'))->render();
 
-        return response()->json([ 
+        return response()->json([
+            'html' => $html,
+            'wrapper' => '#wrapper-family-information',
+            'children_count' => $childrenCount,
             'message' => trans('global.flash.deleted', ['title' => trans('cruds.beneficiaryFamily.title_singular')])
         ]);
     } 

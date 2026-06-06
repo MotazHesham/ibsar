@@ -14,6 +14,14 @@
                 'value' => $user->name ?? '',
             ])
         @endfield
+        @include('utilities.form.select', [
+            'name' => 'gender',
+            'label' => 'cruds.beneficiary.fields.gender',
+            'isRequired' => false,
+            'options' => \App\Models\Beneficiary::GENDER_SELECT,
+            'grid' => 'col-md-6',
+            'value' => $beneficiary->gender ?? '',
+        ])
         @field('nationality_id')
             @include('utilities.form.select', [
                 'name' => 'nationality_id',

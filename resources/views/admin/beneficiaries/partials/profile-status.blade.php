@@ -166,6 +166,35 @@
                             'value' => $beneficiary->profile_status,
                             'grid' => 'col-md-6',
                         ])
+                        @include('utilities.form.select', [
+                            'name' => 'file_category',
+                            'label' => 'cruds.beneficiary.fields.file_category',
+                            'isRequired' => false,
+                            'options' => \App\Models\Beneficiary::FILE_CATEGORY_SELECT,
+                            'grid' => 'col-md-6',
+                            'value' => $beneficiary->file_category,
+                        ])
+                        @include('utilities.form.textarea', [
+                            'name' => 'traits',
+                            'label' => 'cruds.beneficiary.fields.traits',
+                            'isRequired' => false,
+                            'grid' => 'col-md-6',
+                            'value' => $beneficiary->traits,
+                        ])
+                        @include('utilities.form.textarea', [
+                            'name' => 'needs',
+                            'label' => 'cruds.beneficiary.fields.needs',
+                            'isRequired' => false,
+                            'grid' => 'col-md-6',
+                            'value' => $beneficiary->needs,
+                        ])
+                        @include('utilities.form.textarea', [
+                            'name' => 'note',
+                            'label' => 'cruds.beneficiary.fields.note',
+                            'isRequired' => false,
+                            'grid' => 'col-md-12',
+                            'value' => $beneficiary->note,
+                        ])
                         @can('beneficiary_control_all_access')
                             @include('utilities.form.select', [
                                 'name' => 'specialist_id',

@@ -74,6 +74,14 @@
                         'value' => $beneficiary->beneficiary_category_id ?? '',
                     ])
                 @endfield
+                @include('utilities.form.select', [
+                    'name' => 'data_form_template',
+                    'label' => 'cruds.beneficiary.fields.data_form_template',
+                    'isRequired' => false,
+                    'options' => \App\Models\Beneficiary::DATA_FORM_TEMPLATE_SELECT,
+                    'grid' => 'col-md-6',
+                    'value' => $beneficiary->data_form_template ?? '',
+                ])
             </div>
         </div>
         <div class="col-xl-4">

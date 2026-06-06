@@ -64,6 +64,7 @@ class BeneficiaryService
             $beneficiaryData['form_step'] = $beneficiary->form_step != 'login_information' ? $beneficiary->form_step : 'basic_information';
             $beneficiaryData['region_id'] = $request->region_id;
             $beneficiaryData['beneficiary_category_id'] = $request->beneficiary_category_id;
+            $beneficiaryData['data_form_template'] = $request->data_form_template;
         }
 
         if($request->step == 'basic_information'){
@@ -71,6 +72,7 @@ class BeneficiaryService
             $beneficiaryData = $request->only([
                 'nationality_id',
                 'characteristic_of_nationality',
+                'gender',
                 'dob',
                 'marital_status_id', 
                 'martial_status_date',
