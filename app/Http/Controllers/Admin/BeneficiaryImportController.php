@@ -488,6 +488,7 @@ class BeneficiaryImportController extends Controller
                 $this->normalizeImportedJobDetails($mappedData);
                 $this->normalizeImportedDates($mappedData, $csvDateFormat);
                 $handle = $row[$handleColumn] ?? null;
+                $mappedData['handle'] = $handle;
 
                 if (!$handle) {
                     $errorMessage = "Handle column is required";
@@ -741,7 +742,7 @@ class BeneficiaryImportController extends Controller
             // Work Information
             'educational_qualification_id' => $data['educational_qualification_id'] ?? null,
             'job_type_id' => $data['job_type_id'] ?? null,
-            'job_details' => $data['job_details'] ?? null,
+            'job_details' => array_key_exists('job_details', $data) ? $data['job_details'] : null,
             'can_work' => $data['can_work'] ?? null,
             'health_condition_id' => $data['health_condition_id'] ?? null,
             'custom_health_condition' => $data['custom_health_condition'] ?? null,

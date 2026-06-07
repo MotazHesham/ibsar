@@ -480,7 +480,7 @@ class Beneficiary extends Model
 
                 unset($data['job_details']);
                 $properties['skipped_attributes'] = [
-                    'old' => $oldAttributes['job_details'],
+                    'old' => $oldAttributes['job_details'] ?? null,
                     'new' => $currentAttributes['job_details'],
                 ];
             }
