@@ -643,6 +643,12 @@ class BeneficiaryImportController extends Controller
         if (array_key_exists('children_count', $data) && trim((string) ($data['children_count'] ?? '')) === '') {
             $data['children_count'] = 0;
         }
+        if (array_key_exists('total_incomes', $data) && trim((string) ($data['total_incomes'] ?? '')) === '') {
+            $data['total_incomes'] = 0;
+        }
+        if (array_key_exists('total_expenses', $data) && trim((string) ($data['total_expenses'] ?? '')) === '') {
+            $data['total_expenses'] = 0;
+        }
 
         $rules = [
             'name' => 'required',
