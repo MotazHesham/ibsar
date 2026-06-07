@@ -705,6 +705,7 @@ class BeneficiaryImportController extends Controller
         $data['profile_status'] = $data['profile_status'] ?? 'uncompleted';
         $data['form_step'] = $data['form_step'] ?? 'login_information';
 
+        DB::beginTransaction();
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'] ?? null,
@@ -760,6 +761,7 @@ class BeneficiaryImportController extends Controller
             'form_step' => $data['form_step'],
             'created_at' => $data['created_at'] ?? date('Y-m-d'),
         ]);
+        DB::commit();
         return $beneficiary;
     }
 
