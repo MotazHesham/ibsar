@@ -503,6 +503,12 @@ class BeneficiaryImportController extends Controller
 
                 // Check if beneficiary exists by handle
                 $existingBeneficiary = Beneficiary::where('handle', $handle)->first();
+                if (!$existingBeneficiary) {
+                    $existingBeneficiary = Beneficiary::where('identity_num', $mappedData['identity_num'])->first();
+                }
+                if (!$existingBeneficiary) {
+                    $existingBeneficiary = Beneficiary::where('phone', $mappedData['phone'])->first();
+                }
 
                 if ($existingBeneficiary) {
                     // Update existing beneficiary
