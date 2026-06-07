@@ -628,13 +628,17 @@ class BeneficiaryImportController extends Controller
 
     private function validateData($data)
     {
+        if (array_key_exists('children_count', $data) && trim((string) ($data['children_count'] ?? '')) === '') {
+            $data['children_count'] = 0;
+        }
+
         $rules = [
             'name' => 'required',
             'password' => 'required|min:8',
             'email' => 'nullable|email',
             'phone' => 'required|' . config('panel.phone_validation'),
             'phone_2' => 'nullable|' . config('panel.phone_validation'),
-            'identity_num' => 'required|' . config('panel.identity_validation'),
+            'identity_num' => 'required',
             'nationality_id' => 'nullable|exists:nationalities,id',
             'marital_status_id' => 'nullable|exists:marital_statuses,id',
             'job_type_id' => 'nullable|exists:job_types,id',

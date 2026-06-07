@@ -3,7 +3,10 @@
     @php
         $breadcrumbs = [
             ['title' => trans('cruds.beneficiariesManagment.title'), 'url' => route('admin.beneficiaries.index')],
-            ['title' => trans('global.list') . ' ' . trans('cruds.beneficiary.title'), 'url' => route('admin.beneficiaries.index')],
+            [
+                'title' => trans('global.list') . ' ' . trans('cruds.beneficiary.title'),
+                'url' => route('admin.beneficiaries.index'),
+            ],
             ['title' => 'استيراد المستفيدين', 'url' => '#'],
         ];
         $buttons = [
@@ -43,7 +46,8 @@
                         <div class="form-group">
                             <label for="csv_file">اختر ملف CSV</label>
                             <input type="file" id="csv_file" name="csv_file" class="form-control" accept=".csv,.txt">
-                            <small class="form-text text-muted">الحد الأقصى لحجم الملف: 10 ميجابايت. الصيغ المدعومة: CSV, TXT</small>
+                            <small class="form-text text-muted">الحد الأقصى لحجم الملف: 10 ميجابايت. الصيغ المدعومة: CSV,
+                                TXT</small>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -64,7 +68,8 @@
                     <div class="col-md-12">
                         <h5>الخطوة 2: تعيين أعمدة CSV إلى حقول قاعدة البيانات</h5>
                         <div class="alert alert-warning">
-                            <strong>مهم:</strong> اختر عمود المعرف الفريد (handle) الذي سيتم استخدامه لتحديث السجلات الموجودة.
+                            <strong>مهم:</strong> اختر عمود المعرف الفريد (handle) الذي سيتم استخدامه لتحديث السجلات
+                            الموجودة.
                         </div>
                     </div>
                 </div>
@@ -74,7 +79,8 @@
                         <div class="form-group">
                             <label for="csv_date_format">صيغة التاريخ في ملف CSV</label>
                             <select id="csv_date_format" class="form-control" style="max-width: 36rem;"></select>
-                            <small class="form-text text-muted">تُستخدم لقراءة تاريخ الميلاد، تاريخ الحالة الاجتماعية، وتاريخ الإنشاء (إن وُجد في التعيين).</small>
+                            <small class="form-text text-muted">تُستخدم لقراءة تاريخ الميلاد، تاريخ الحالة الاجتماعية،
+                                وتاريخ الإنشاء (إن وُجد في التعيين).</small>
                         </div>
                     </div>
                 </div>
@@ -197,7 +203,7 @@
                 $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> جاري الرفع...');
 
                 $.ajax({
-                    url: '{{ route("admin.beneficiaries.import.upload") }}',
+                    url: '{{ route('admin.beneficiaries.import.upload') }}',
                     type: 'POST',
                     data: formData,
                     processData: false,
@@ -212,12 +218,13 @@
 
                             fillDateFormatSelect(
                                 response.date_format_options || {},
-                                response.default_date_format || '{{ config('panel.date_format') }}'
+                                response.default_date_format ||
+                                '{{ config('panel.date_format') }}'
                             );
-                            
+
                             displayPreview(response.headers, response.preview_data);
                             generateColumnMapping(response.headers, response.database_columns);
-                            
+
                             $('#step1').hide();
                             $('#step2').show();
                             $('#step3').hide();
@@ -233,7 +240,8 @@
                         alert('خطأ: ' + message);
                     },
                     complete: function() {
-                        $('#uploadBtn').prop('disabled', false).html('<i class="fas fa-upload"></i> رفع ومعاينة');
+                        $('#uploadBtn').prop('disabled', false).html(
+                            '<i class="fas fa-upload"></i> رفع ومعاينة');
                     }
                 });
             });
@@ -269,10 +277,11 @@
 
                 lastImportSettings = collectImportSettings();
 
-                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...');
+                $(this).prop('disabled', true).html(
+                    '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...');
 
                 $.ajax({
-                    url: '{{ route("admin.beneficiaries.import.process") }}',
+                    url: '{{ route('admin.beneficiaries.import.process') }}',
                     type: 'POST',
                     data: {
                         file_path: filePath,
@@ -301,7 +310,8 @@
                         alert('خطأ: ' + message);
                     },
                     complete: function() {
-                        $('#processBtn').prop('disabled', false).html('<i class="fas fa-play"></i> معالجة الاستيراد');
+                        $('#processBtn').prop('disabled', false).html(
+                            '<i class="fas fa-play"></i> معالجة الاستيراد');
                     }
                 });
             });
@@ -361,7 +371,8 @@
                     count++;
                 });
                 html += '</select>';
-                html += '<small class="form-text text-muted">سيتم استخدام هذا العمود لتحديد السجلات الموجودة للتحديثات</small>';
+                html +=
+                    '<small class="form-text text-muted">سيتم استخدام هذا العمود لتحديد السجلات الموجودة للتحديثات</small>';
                 html += '</div>';
 
                 html += '<hr><h6>حقول قاعدة البيانات</h6>';
@@ -370,13 +381,14 @@
                 Object.keys(dbColumns).forEach(function(dbColumn) {
                     html += '<div class="form-group col-md-4">';
                     html += '<label for="' + dbColumn + '">' + dbColumns[dbColumn] + '</label>';
-                    html += '<select class="form-control column-mapping-select" data-db-column="' + dbColumn + '">';
+                    html += '<select class="form-control column-mapping-select" data-db-column="' +
+                        dbColumn + '">';
                     html += '<option value="">-- غير معين --</option>';
                     let count = 0;
                     headers.forEach(function(header) {
                         html += '<option value="' + count + '">' + header + '</option>';
                         count++;
-                    }); 
+                    });
                     html += '</select>';
                     html += '</div>';
                 });
@@ -422,7 +434,8 @@
                         html += '<i class="fas fa-redo"></i> إعادة المحاولة (تعديل تعيين الأعمدة)';
                         html += '</button>';
                     } else {
-                        html += '<small class="text-muted">لم يعد ملف CSV متاحاً على الخادم. ارفع الملف من جديد للمحاولة.</small>';
+                        html +=
+                            '<small class="text-muted">لم يعد ملف CSV متاحاً على الخادم. ارفع الملف من جديد للمحاولة.</small>';
                     }
                     html += '</div>';
                     html += '<div class="table-responsive">';
@@ -439,12 +452,14 @@
                     failedRows.forEach(function(failedRow) {
                         html += '<tr>';
                         html += '<td>' + escapeHtml(failedRow.row) + '</td>';
-                        html += '<td><span class="text-danger">' + escapeHtml(failedRow.error) + '</span></td>';
+                        html += '<td><span class="text-danger">' + escapeHtml(failedRow.error) +
+                            '</span></td>';
                         html += '<td>';
                         if (failedRow.data && Object.keys(failedRow.data).length > 0) {
                             html += '<small>';
                             Object.keys(failedRow.data).forEach(function(key) {
-                                html += '<strong>' + escapeHtml(key) + ':</strong> ' + escapeHtml(failedRow.data[key]) + '<br>';
+                                html += '<strong>' + escapeHtml(key) + ':</strong> ' + escapeHtml(
+                                    failedRow.data[key]) + '<br>';
                             });
                             html += '</small>';
                         } else {
@@ -466,10 +481,10 @@
                     html += '<i class="fas fa-redo"></i> إعادة المحاولة (تعديل تعيين الأعمدة)';
                     html += '</button>';
                 }
-                html += '<a href="{{ route("admin.beneficiaries.index") }}" class="btn btn-primary">';
+                html += '<a href="{{ route('admin.beneficiaries.index') }}" class="btn btn-primary">';
                 html += '<i class="fas fa-list"></i> العودة إلى قائمة المستفيدين';
                 html += '</a>';
-                html += '<a href="{{ route("admin.beneficiaries.import") }}" class="btn btn-secondary">';
+                html += '<a href="{{ route('admin.beneficiaries.import') }}" class="btn btn-secondary">';
                 html += '<i class="fas fa-upload"></i> استيراد ملف آخر';
                 html += '</a>';
                 html += '</div>';
@@ -478,4 +493,4 @@
             }
         });
     </script>
-@endsection 
+@endsection
