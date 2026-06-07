@@ -244,6 +244,7 @@ class BeneficiaryImportController extends Controller
             'marital_status_id' => [
                 'aliases' => [
                     'اخري' => '5',
+                    'اخرى' => '5',
                     'ارملة' => '2',
                     'أعزب' => '4',
                     'الزوجة متوفية' => '2',
@@ -279,6 +280,7 @@ class BeneficiaryImportController extends Controller
                     'جنوب إفريقيا' => '66',
                     'سوريا' => '5',
                     'فلسطين' => '7',
+                    'فلسطین' => '7',
                     'كينيا' => '67',
                     'لبنان' => '8',
                     'مالي' => '80',
